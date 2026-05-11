@@ -281,9 +281,16 @@ def get_fresh_data():
         data = fetch_all(new_token)
         if data is None:
             return None
-    # Update cache
-    with open(PROFILE_FILE, "w") as f:
-        json.dump(data, f, indent=2, default=str)
+    # Update cache atomically with restrictive permissions
+    fd, tmp_path = tempfile.mkstemp(dir=PROFILE_FILE.parent, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(data, f, indent=2, default=str)
+        os.chmod(tmp_path, 0o600)
+        os.replace(tmp_path, PROFILE_FILE)
+    except Exception:
+        os.unlink(tmp_path)
+        raise
     return data
 
 

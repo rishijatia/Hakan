@@ -436,8 +436,15 @@ def main():
                 "error": "Token refresh failed. User needs to re-authorize.",
                 "auth_url": auth_url,
             }
-            with open(PROFILE_FILE, "w") as f:
-                json.dump(error_profile, f, indent=2)
+            fd, tmp_path = tempfile.mkstemp(dir=PROFILE_FILE.parent, suffix=".tmp")
+            try:
+                with os.fdopen(fd, "w") as f:
+                    json.dump(error_profile, f, indent=2)
+                os.chmod(tmp_path, 0o600)
+                os.replace(tmp_path, PROFILE_FILE)
+            except Exception:
+                os.unlink(tmp_path)
+                raise
             print("AUTH_NEEDED")
             return
         data = fetch_all(new_token)
@@ -464,13 +471,20 @@ def main():
     else:
         summary = build_coaching_briefing(data)
 
-    # Always write valid JSON to profile file
+    # Always write valid JSON to profile file (atomic + restricted perms)
     profile_data = {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "summary_text": summary,
     }
-    with open(PROFILE_FILE, "w") as f:
-        json.dump(profile_data, f, indent=2)
+    fd, tmp_path = tempfile.mkstemp(dir=PROFILE_FILE.parent, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(profile_data, f, indent=2)
+        os.chmod(tmp_path, 0o600)
+        os.replace(tmp_path, PROFILE_FILE)
+    except Exception:
+        os.unlink(tmp_path)
+        raise
 
     print(summary)
 
