@@ -15,7 +15,7 @@ Daily WHOOP data sync with automatic token refresh and Telegram summaries. Provi
 
 ## How It Works
 
-1. **Daily cron** runs at 8am UTC → fetches WHOOP data → sends Telegram summary
+1. **Daily cron** runs at 8am ET (12pm UTC) → fetches WHOOP data → sends Telegram summary
 2. **Token auto-refresh** using `offline` scope refresh token (no re-auth needed)
 3. **Profile file** at `/opt/data/whoop/daily_profile.json` is readable by Hermes for contextual awareness
 
@@ -68,9 +68,10 @@ print(f'Saved. refresh_token: {len(d.get(\"refresh_token\",\"\"))} chars')
 
 ### 3. Set Up Cron Job
 ```bash
-# In Hermes:
-cronjob create --name "WHOOP Daily Profile" --schedule "0 8 * * *" --script whoop_daily.py
+# In Hermes (8am ET = 12pm UTC during EDT):
+cronjob create --name "WHOOP Daily Profile" --schedule "0 12 * * *" --script whoop_daily.py
 ```
+**Note:** Cron is hardcoded to UTC. Adjust for DST: 12pm UTC = 8am EDT, 1pm UTC = 8am EST.
 
 ## API Details
 
@@ -81,7 +82,7 @@ cronjob create --name "WHOOP Daily Profile" --schedule "0 8 * * *" --script whoo
   - `GET /v2/user/profile/basic` — name, email
   - `GET /v2/user/measurement/body` — height, weight, max HR
   - `GET /v2/recovery?limit=7` — recovery score, HRV, RHR, SpO2
-  - `GET /v2/activity/sleep?limit=7` — sleep stages, performance, efficiency
+  - `GET /v2/activity/sleep?limit=7` — sleep stages, performance, efficiency, wake time (end field)
   - `GET /v2/activity/workout?limit=7` — strain, HR, duration, sport type
   - `GET /v2/cycle?limit=7` — daily strain, calories
 
@@ -99,11 +100,63 @@ Before each API call:
 
 ## Pitfalls
 
-- **Secret redaction:** Hermes redacts tokens in terminal output. All token handling must be atomic (curl | python3 → file). Never pass tokens through LLM context.
-- **Cloudflare blocking:** WHOOP API blocks bare urllib requests. Add `User-Agent: Mozilla/5.0 hermes-whoop/1.0` header.
+- **Secret redaction:** Hermes redacts tokens in terminal output (`security.redact_secrets: true`). All token handling must be atomic (curl | python3 → file). Never pass tokens through LLM context. Use `execute_code` or single shell pipelines.
+- **Cloudflare blocking:** WHOOP API blocks bare `urllib` requests (error 1010). Add `User-Agent: Mozilla/5.0 hermes-whoop/1.0` header, or use `curl` instead.
 - **urllib timeout:** Use `timeout=30` (single int), NOT `timeout=(5, 30)` (tuple is for `requests` library).
 - **Token file location:** `/opt/data/whoop/tokens.json` (not .env — avoids redaction issues).
-- **Offline scope:** Must be included in both the app settings AND the auth URL. Not listed in OpenAPI spec but documented in OAuth docs.
+- **Offline scope:** Must be included in both the app settings AND the auth URL. Not listed in OpenAPI spec but documented at `https://developer.whoop.com/docs/developing/oauth`.
+- **API base URL:** `https://api.prod.whoop.com/developer` (not just `/whoop.com`). Discovered via OpenAPI spec at `/developer/doc/openapi.json`.
+- **Auth codes are single-use:** Each code can only be exchanged once. If the exchange fails or the token gets redacted, generate a fresh auth link.
+- **OAuth state parameter:** WHOOP requires `state` with minimum 8 characters.
+- **Redirect URI must match exactly:** Including path (`/callback` vs `/whoop-callback`) — no trailing slash.
+- **Cron timezone:** Cron uses UTC. 8am ET = 12pm UTC (EDT) or 1pm UTC (EST). Adjust seasonally.
+
+## Wake Time Tracking
+
+Sleep records include `end` time which is the user's wake-up time. Convert from UTC to ET (UTC-4 during EDT, UTC-5 during EST). Typical wake window: 7:50–9:00 AM ET.
+
+## Q&A Support
+
+When Rishi asks fitness questions, use the WHOOP data to answer. Two approaches:
+
+### 1. Use cached data (fast)
+Read `/opt/data/whoop/daily_profile_raw.json` — contains last 14 days of data. Good for most questions.
+
+### 2. Fetch fresh data (if needed)
+```bash
+python3 /opt/data/scripts/whoop_query.py 30  # fetches last 30 days
+```
+Outputs JSON to stdout. Also updates the cache file.
+
+### Question Types & How to Answer
+
+| Type | Example | Approach |
+|------|---------|----------|
+| **State** | "How's my recovery?" | Read latest recovery from cache |
+| **Trend** | "Is my HRV improving?" | Compare 7-day vs 30-day averages |
+| **Causal** | "Did my run affect sleep?" | Correlate workout date → next day sleep |
+| **Comparison** | "Runs vs lifts — what recovers better?" | Group workouts by type, avg next-day recovery |
+| **Advice** | "Should I work out today?" | Check recovery + recent strain + sleep debt |
+| **Specific** | "How much did I sleep Tuesday?" | Filter sleep by date |
+| **Aggregate** | "Total miles this month?" | Sum workout distances |
+
+### Coaching Rules
+1. **Lead with the answer**, then explain the data
+2. **Be honest** — if data is insufficient, say so
+3. **Give actionable advice** — not just numbers
+4. **Use context** — consider day of week, recent patterns, sleep debt
+5. **Keep it concise** — 3-5 lines max unless asked for detail
+
+### Example Q&A
+
+**Q:** "Should I run today?"
+**A:** "Recovery is 61 🟡. You ran yesterday (strain 13.2) and sleep debt is 1.8hrs. Swap for Z2 stairmaster or rest. If you do run, 30min max, stay in Z2."
+
+**Q:** "Do I sleep better after runs or lifts?"
+**A:** "Last 30 days: after runs — avg sleep perf 84%, 7h 12m. After lifts — 78%, 6h 48m. Run days give you better sleep, especially morning runs. Evening lifts past 7pm correlate with worst sleep."
+
+**Q:** "Am I overtraining?"
+**A:** "Checking... Last 7 days: 6 workouts, avg strain 11.4. Recovery declined 4 of 5 days (72→41). Sleep debt climbing. HRV dipped to 38ms (avg 52ms). ⚠️ Yes, looks like overreaching. Take 2 rest days."
 
 ## What WHOOP API Cannot Do
 
