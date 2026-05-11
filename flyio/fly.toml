@@ -1,0 +1,23 @@
+# fly.toml — Hermes Agent Gateway on Fly.io
+# Run: fly launch --copy-config --no-deploy
+
+app = "hermes-gateway"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  HERMES_HOME = "/root/.hermes"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = false
+  auto_start_machines = true
+  min_machines_running = 1
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "256mb"
+
