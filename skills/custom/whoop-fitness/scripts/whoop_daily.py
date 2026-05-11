@@ -21,8 +21,15 @@ TOKENS_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 
 def load_tokens():
-    with open(TOKENS_FILE) as f:
-        return json.load(f)
+    """Load tokens from disk. Returns None if file is missing or malformed."""
+    try:
+        with open(TOKENS_FILE) as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return None
+    except (json.JSONDecodeError, OSError) as e:
+        print(f"ERROR: tokens.json is corrupt: {e}", file=sys.stderr)
+        return None
 
 
 def save_tokens(data):
@@ -438,6 +445,33 @@ def build_weekly_review(data):
 
 def main():
     tokens = load_tokens()
+    if tokens is None:
+        import urllib.parse
+        import secrets
+        state = secrets.token_urlsafe(8)
+        auth_url = (
+            "https://api.prod.whoop.com/oauth/oauth2/auth"
+            "?response_type=code"
+            "&client_id=REDACTED"
+            "&scope=read%3Arecovery+read%3Asleep+read%3Aworkout+read%3Acycles+read%3Aprofile+read%3Abody_measurement+offline"
+            f"&state={state}"
+        )
+        error_profile = {
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "error": "tokens.json missing or corrupt. User needs to set up or re-authorize.",
+            "auth_url": auth_url,
+        }
+        fd, tmp_path = tempfile.mkstemp(dir=PROFILE_FILE.parent, suffix=".tmp")
+        try:
+            with os.fdopen(fd, "w") as f:
+                json.dump(error_profile, f, indent=2)
+            os.chmod(tmp_path, 0o600)
+            os.replace(tmp_path, PROFILE_FILE)
+        except Exception:
+            os.unlink(tmp_path)
+            raise
+        print("AUTH_NEEDED — tokens.json is missing or corrupt. Re-run the WHOOP setup skill or re-authorize.")
+        return
 
     # Try fetching with current token
     data = fetch_all(tokens["access_token"])
@@ -473,7 +507,7 @@ def main():
             except Exception:
                 os.unlink(tmp_path)
                 raise
-            print("AUTH_NEEDED")
+            print(f"AUTH_NEEDED — please re-authorize: {auth_url}")
             return
         data = fetch_all(new_token)
         if data is None:
@@ -491,7 +525,8 @@ def main():
             except Exception:
                 os.unlink(tmp_path)
                 raise
-            print("ERROR: Still auth error after refresh", file=sys.stderr)
+            print("ERROR: Still auth error after refresh. Re-authorization may be needed.", file=sys.stderr)
+            print("ERROR: Auth error after token refresh. Re-authorization may be needed. See /opt/data/whoop/daily_profile.json for details.")
             return
 
     # Save raw data atomically with restrictive permissions

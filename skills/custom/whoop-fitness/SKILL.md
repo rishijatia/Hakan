@@ -16,7 +16,7 @@ Daily WHOOP data sync with automatic token refresh and summary delivery via Herm
 
 ## How It Works
 
-1. **Daily cron** runs at **12:00 UTC** (= 8am EDT / 7am EST). Cron expression: `0 12 * * *`. UTC-fixed so the ET display shifts by 1 hour with DST. → fetches WHOOP data → outputs summary to stdout (captured by Hermes for delivery)
+1. **Daily cron** runs at **12:00 UTC** (= 8am EDT / 7am EST). Cron expression: `0 12 * * *`. ET run time shifts by 1 hour with DST because the cron schedule is fixed in UTC. → fetches WHOOP data → outputs summary to stdout (captured by Hermes for delivery)
 2. **Token auto-refresh** using `offline` scope refresh token (no re-auth needed)
 3. **Profile file** at `/opt/data/whoop/daily_profile.json` is readable by Hermes for contextual awareness
 

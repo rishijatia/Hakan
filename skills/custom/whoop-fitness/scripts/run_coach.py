@@ -41,8 +41,15 @@ Z2_CAP = HR_ZONES["Z2 (Aerobic)"][1]  # derived from HR_ZONES
 # ── Token management ────────────────────────────────────────────────────────
 
 def load_tokens():
-    with open(TOKENS_FILE) as f:
-        return json.load(f)
+    """Load tokens from disk. Returns None if file is missing or malformed."""
+    try:
+        with open(TOKENS_FILE) as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return None
+    except (json.JSONDecodeError, OSError) as e:
+        print(f"ERROR: tokens.json is corrupt: {e}", file=sys.stderr)
+        return None
 
 def save_tokens(data):
     """Write tokens atomically with restrictive permissions."""
@@ -289,6 +296,9 @@ def load_cached_data():
 def get_fresh_data():
     """Fetch fresh data from WHOOP API, refreshing token if needed."""
     tokens = load_tokens()
+    if tokens is None:
+        print("❌ WHOOP tokens not configured. Re-run the WHOOP setup skill or re-authorize.", file=sys.stderr)
+        return None
     data = fetch_all(tokens["access_token"])
     if data is None:
         print("🔄 Token expired, refreshing...", file=sys.stderr)

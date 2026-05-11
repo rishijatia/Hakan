@@ -19,8 +19,15 @@ TOKENS_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 
 def load_tokens():
-    with open(TOKENS_FILE) as f:
-        return json.load(f)
+    """Load tokens from disk. Returns None if file is missing or malformed."""
+    try:
+        with open(TOKENS_FILE) as f:
+            return json.load(f)
+    except FileNotFoundError:
+        return None
+    except (json.JSONDecodeError, OSError) as e:
+        print(f"ERROR: tokens.json is corrupt: {e}", file=sys.stderr)
+        return None
 
 
 def save_tokens(data):
@@ -129,7 +136,21 @@ def fetch_fresh(token, days=30):
 
 def main():
     tokens = load_tokens()
-    days = int(sys.argv[1]) if len(sys.argv) > 1 else 30
+    if tokens is None:
+        print(json.dumps({"error": "AUTH_NEEDED", "detail": "tokens.json is missing or corrupt. Re-run the WHOOP setup skill or re-authorize."}))
+        return
+    # Validate days argument
+    if len(sys.argv) > 1:
+        try:
+            days = int(sys.argv[1])
+        except ValueError:
+            print(json.dumps({"error": "INVALID_ARG", "detail": f"days must be a positive integer, got: {sys.argv[1]!r}"}))
+            sys.exit(1)
+        if days < 1 or days > 365:
+            print(json.dumps({"error": "INVALID_ARG", "detail": f"days must be between 1 and 365, got: {days}"}))
+            sys.exit(1)
+    else:
+        days = 30
 
     data = fetch_fresh(tokens["access_token"], days)
     if data is None:
