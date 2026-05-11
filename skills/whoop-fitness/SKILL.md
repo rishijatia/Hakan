@@ -26,7 +26,12 @@ Daily WHOOP data sync with automatic token refresh and Telegram summaries. Provi
 ├── tokens.json              # OAuth tokens (access + refresh + client credentials)
 ├── daily_profile.json       # Latest human-readable profile summary
 ├── daily_profile_raw.json   # Latest raw API data (JSON)
-└── daily_update.py          # Main sync script (also at /opt/data/scripts/whoop_daily.py)
+
+scripts/whoop-fitness/scripts/
+├── whoop_daily.py           # Main daily sync script (cron target)
+└── whoop_query.py           # On-demand Q&A data fetcher
+
+Install: symlink or copy scripts into `/opt/data/scripts/` for cron access.
 ```
 
 ## Setup
@@ -89,12 +94,12 @@ cronjob create --name "WHOOP Daily Profile" --schedule "0 12 * * *" --script who
 ## Token Refresh Flow
 
 ```
-Before each API call:
+On fetch (after 401 auth error):
 1. Read tokens.json
-2. If access_token expired:
+2. If API returns 401:
    a. POST to /oauth/oauth2/token with grant_type=refresh_token
    b. Save new access_token + new refresh_token
-   c. If refresh fails → send re-auth link via Telegram
+   c. If refresh fails → write error profile with re-auth URL
 3. Proceed with API call
 ```
 

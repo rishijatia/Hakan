@@ -2,15 +2,20 @@
 """WHOOP Q&A data fetcher. Fetches fresh data and outputs JSON for analysis."""
 
 import json
+import os
 import sys
 import time
-from datetime import datetime, timezone, timedelta
+import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 TOKENS_FILE = Path("/opt/data/whoop/tokens.json")
 CACHE_FILE = Path("/opt/data/whoop/daily_profile_raw.json")
 BASE_URL = "https://api.prod.whoop.com/developer"
 TOKEN_URL = "https://api.prod.whoop.com/oauth/oauth2/token"
+
+# Ensure data directory exists
+TOKENS_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 
 def load_tokens():
@@ -19,8 +24,16 @@ def load_tokens():
 
 
 def save_tokens(data):
-    with open(TOKENS_FILE, "w") as f:
-        json.dump(data, f, indent=2)
+    """Write tokens atomically with restrictive permissions."""
+    fd, tmp_path = tempfile.mkstemp(dir=TOKENS_FILE.parent, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(data, f, indent=2)
+        os.chmod(tmp_path, 0o600)
+        os.replace(tmp_path, TOKENS_FILE)
+    except Exception:
+        os.unlink(tmp_path)
+        raise
 
 
 def refresh_access_token(tokens):
@@ -40,11 +53,16 @@ def refresh_access_token(tokens):
         with urllib.request.urlopen(req, timeout=15) as resp:
             result = json.loads(resp.read())
     except Exception as e:
+        print(f"ERROR: Token refresh failed: {e}", file=sys.stderr)
         return None
     if "error" in result:
+        print(f"ERROR: Token refresh returned error: {result.get('error_hint', result['error'])}", file=sys.stderr)
+        return None
+    if "access_token" not in result:
+        print("ERROR: Token refresh response missing access_token", file=sys.stderr)
         return None
     tokens["access_token"] = result["access_token"]
-    tokens["refresh_token"] = result["refresh_token"]
+    tokens["refresh_token"] = result.get("refresh_token", tokens["refresh_token"])
     tokens["expires_at"] = datetime.now(timezone.utc).isoformat()
     save_tokens(tokens)
     return tokens["access_token"]
@@ -80,17 +98,24 @@ def api_get(path, token, retries=3):
 
 
 def fetch_fresh(token, days=30):
-    """Fetch fresh data from API."""
+    """Fetch fresh data from API. Returns None on auth error, dict on success."""
     data = {}
-    profile = api_get("/v2/user/profile/basic", token)
-    if "_auth_error" in profile:
-        return None
-    data["profile"] = profile
-    data["body"] = api_get("/v2/user/measurement/body", token)
-    data["recovery"] = api_get(f"/v2/recovery?limit={days}", token).get("records", [])
-    data["sleep"] = api_get(f"/v2/activity/sleep?limit={days}", token).get("records", [])
-    data["workout"] = api_get(f"/v2/activity/workout?limit={days}", token).get("records", [])
-    data["cycles"] = api_get(f"/v2/cycle?limit={days}", token).get("records", [])
+    endpoints = [
+        ("profile", "/v2/user/profile/basic", False),
+        ("body", "/v2/user/measurement/body", True),
+        ("recovery", f"/v2/recovery?limit={days}", True),
+        ("sleep", f"/v2/activity/sleep?limit={days}", True),
+        ("workout", f"/v2/activity/workout?limit={days}", True),
+        ("cycles", f"/v2/cycle?limit={days}", True),
+    ]
+    for key, path, is_list in endpoints:
+        result = api_get(path, token)
+        if "_auth_error" in result:
+            return None
+        if is_list:
+            data[key] = result.get("records", []) if "_error" not in result else []
+        else:
+            data[key] = result if "_error" not in result else {}
     return data
 
 
