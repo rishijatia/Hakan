@@ -60,8 +60,8 @@ add_section "Recent Errors (last 24h)"
 if [[ -d "$LOG_DIR" ]]; then
     LOG_FILES=$(find "$LOG_DIR" -name "*.log" -mtime -1 2>/dev/null)
     if [[ -n "$LOG_FILES" ]]; then
-        ERROR_COUNT=$(grep -ci "error\|failed\|exception\|traceback" $LOG_FILES 2>/dev/null || echo 0)
-        WARN_COUNT=$(grep -ci "warning\|warn" $LOG_FILES 2>/dev/null || echo 0)
+        ERROR_COUNT=$(cat $LOG_FILES 2>/dev/null | grep -ci "error\|failed\|exception\|traceback" || echo 0)
+        WARN_COUNT=$(cat $LOG_FILES 2>/dev/null | grep -ci "warning\|warn" || echo 0)
         
         if [[ "$ERROR_COUNT" -gt 50 ]]; then
             add_crit "High error count: $ERROR_COUNT errors in last 24h"
