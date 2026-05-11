@@ -62,6 +62,7 @@ curl -s -X POST https://api.prod.whoop.com/oauth/oauth2/token \
 import sys, json, os
 d = json.load(sys.stdin)
 path = '/opt/data/whoop/tokens.json'
+os.makedirs(os.path.dirname(path), exist_ok=True)
 open(path,'w').write(json.dumps({
     'access_token': d['access_token'],
     'refresh_token': d.get('refresh_token',''),
@@ -90,10 +91,12 @@ cronjob create --name "WHOOP Daily Profile" --schedule "0 12 * * *" --script who
 - **Endpoints used:**
   - `GET /v2/user/profile/basic` — name, email
   - `GET /v2/user/measurement/body` — height, weight, max HR
-  - `GET /v2/recovery?limit=7` — recovery score, HRV, RHR, SpO2
-  - `GET /v2/activity/sleep?limit=7` — sleep stages, performance, efficiency, wake time (end field)
-  - `GET /v2/activity/workout?limit=7` — strain, HR, duration, sport type
-  - `GET /v2/cycle?limit=7` — daily strain, calories
+  - `GET /v2/recovery?limit=14` — recovery score, HRV, RHR, SpO2
+  - `GET /v2/activity/sleep?limit=14` — sleep stages, performance, efficiency, wake time (end field)
+  - `GET /v2/activity/workout?limit=14` — strain, HR, duration, sport type
+  - `GET /v2/cycle?limit=14` — daily strain, calories
+
+> **Note:** The daily cron (`whoop_daily.py`) and run coach (`run_coach.py`) fetch `limit=14` (cycles) to `limit=30` (recovery/sleep/workout). On-demand Q&A (`whoop_query.py`) defaults to 30 days, configurable via argument.
 
 ## Token Refresh Flow
 

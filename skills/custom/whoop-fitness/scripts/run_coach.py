@@ -35,7 +35,7 @@ HR_ZONES = {
     "Z4 (Threshold)": (155, 175),
     "Z5 (VO2max)":    (175, 194),
 }
-Z2_CAP = 136  # top of Z2
+Z2_CAP = HR_ZONES["Z2 (Aerobic)"][1]  # derived from HR_ZONES
 
 
 # ── Token management ────────────────────────────────────────────────────────
@@ -402,7 +402,7 @@ def cmd_brief():
             # Back from rest — start with easy tempo
             lines.append("▸ *Easy Tempo Run* — 35-45 min")
             lines.append(f"  Warmup: 10 min Z1-Z2 (HR <{Z2_CAP})")
-            lines.append(f"  Main: 20-25 min @ Z3 (HR 136-155)")
+            lines.append(f"  Main: 20-25 min @ Z3 (HR {HR_ZONES['Z3 (Tempo)'][0]}-{HR_ZONES['Z3 (Tempo)'][1]})")
             lines.append(f"  Cooldown: 5-10 min Z1")
         elif week_km < 15:
             # Low volume week — build with aerobic base
@@ -414,7 +414,7 @@ def cmd_brief():
             # Good volume, recovered — intervals OK
             lines.append("▸ *Interval Session* — 45-50 min")
             lines.append(f"  Warmup: 10 min Z1-Z2 (HR <{Z2_CAP})")
-            lines.append(f"  Main: 5×4min @ Z4 (HR 155-175) w/ 2min Z1 jog recoveries")
+            lines.append(f"  Main: 5×4min @ Z4 (HR {HR_ZONES['Z4 (Threshold)'][0]}-{HR_ZONES['Z4 (Threshold)'][1]}) w/ 2min Z1 jog recoveries")
             lines.append(f"  Cooldown: 8 min Z1-Z2")
         lines.append("")
         lines.append("💡 _You're recovered — this is your green light to push. But stay honest: Z2 on warmup/cooldown._")
