@@ -279,7 +279,7 @@ def build_coaching_briefing(data):
                     pass
             sport = sport_display(w.get("sport_name"))
             emoji = sport_emoji(w.get("sport_name"))
-            dist = sc.get("distance_meters")
+            dist = sc.get("distance_meter")
             dist_str = f" | {dist/1000:.1f}km" if dist else ""
             lines.append(f"{emoji} Yesterday: {sport} — {ms_to_hm(dur_ms)}, strain {sc.get('strain', 0):.1f}{dist_str}")
 
