@@ -176,3 +176,4 @@ Outputs JSON to stdout. Also updates the cache file.
 - ❌ Read Strength Trainer exercise data (sets, reps, weights)
 - ❌ Write any data back to WHOOP
 - Exercise tracking must be done manually (voice input or separate system)
+# Last reviewed: Mon May 11 18:11:13 UTC 2026
