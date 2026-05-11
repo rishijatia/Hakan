@@ -2,7 +2,7 @@ FROM python:3.11-slim
 
 # Install system deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    git curl && \
+    git curl xz-utils && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Hermes
@@ -17,4 +17,5 @@ EXPOSE 8080
 
 # Start the gateway
 CMD ["hermes", "gateway", "run"]
+
 
