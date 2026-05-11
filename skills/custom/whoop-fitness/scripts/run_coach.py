@@ -118,30 +118,46 @@ def api_get(path, token, retries=3):
 
 def fetch_all(token):
     data = {}
+    errors = {}
     profile = api_get("/v2/user/profile/basic", token)
     if "_auth_error" in profile:
         return None
+    if "_error" in profile:
+        errors["profile"] = profile["_error"]
     data["profile"] = profile
     recovery = api_get("/v2/recovery?limit=30", token)
     if "_auth_error" in recovery:
         return None
+    if "_error" in recovery:
+        errors["recovery"] = recovery["_error"]
     data["recovery"] = recovery.get("records", []) if "_error" not in recovery else []
     sleep = api_get("/v2/activity/sleep?limit=30", token)
     if "_auth_error" in sleep:
         return None
+    if "_error" in sleep:
+        errors["sleep"] = sleep["_error"]
     data["sleep"] = sleep.get("records", []) if "_error" not in sleep else []
     workout = api_get("/v2/activity/workout?limit=30", token)
     if "_auth_error" in workout:
         return None
+    if "_error" in workout:
+        errors["workout"] = workout["_error"]
     data["workout"] = workout.get("records", []) if "_error" not in workout else []
     cycles = api_get("/v2/cycle?limit=14", token)
     if "_auth_error" in cycles:
         return None
+    if "_error" in cycles:
+        errors["cycles"] = cycles["_error"]
     data["cycles"] = cycles.get("records", []) if "_error" not in cycles else []
     body = api_get("/v2/user/measurement/body", token)
     if "_auth_error" in body:
         return None
+    if "_error" in body:
+        errors["body"] = body["_error"]
     data["body"] = body if "_error" not in body else {}
+    if errors:
+        data["_errors"] = errors
+        print(f"WARNING: Partial fetch failures: {errors}", file=sys.stderr)
     return data
 
 
@@ -324,7 +340,7 @@ def cmd_brief():
     emoji = recovery_emoji(score)
 
     # Sleep info
-    sleep_perf = 0
+    sleep_perf = None
     sleep_total_ms = 0
     if sl:
         sc = sl.get("score", {})
@@ -337,7 +353,7 @@ def cmd_brief():
     week_km = get_run_volume_km(runs, 7)
 
     # Determine decision
-    poor_sleep = sleep_perf < 70
+    poor_sleep = sleep_perf is not None and sleep_perf < 70
     if score < 50 or poor_sleep and score < 60:
         decision = "REST"
         decision_emoji = "🛑"
@@ -356,7 +372,7 @@ def cmd_brief():
     # Status panel
     lines.append(f"*Status*")
     lines.append(f"{emoji} Recovery: *{score:.0f}* | HRV: {hrv:.0f}ms | RHR: {rhr:.0f}")
-    lines.append(f"😴 Sleep: {ms_to_hm(sleep_total_ms)} | Performance: {sleep_perf:.0f}%")
+    lines.append(f"😴 Sleep: {ms_to_hm(sleep_total_ms)} | Performance: {f'{sleep_perf:.0f}%' if sleep_perf is not None else 'N/A'}")
     if debt_ms > 1800000:
         debt_str = ms_to_hm(debt_ms)
         lines.append(f"⚠️ Sleep debt (7d): {debt_str}")

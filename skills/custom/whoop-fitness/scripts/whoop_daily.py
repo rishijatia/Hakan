@@ -126,39 +126,55 @@ def api_get(path, token, retries=3):
 
 
 def fetch_all(token):
-    """Fetch latest data from all endpoints. Returns None on any auth error."""
+    """Fetch latest data from all endpoints. Returns None on any auth or API error."""
     data = {}
+    errors = {}
 
     profile = api_get("/v2/user/profile/basic", token)
     if "_auth_error" in profile:
         return None
+    if "_error" in profile:
+        errors["profile"] = profile["_error"]
     data["profile"] = profile
 
     recovery = api_get("/v2/recovery?limit=14", token)
     if "_auth_error" in recovery:
         return None
+    if "_error" in recovery:
+        errors["recovery"] = recovery["_error"]
     data["recovery"] = recovery.get("records", []) if "_error" not in recovery else []
 
     sleep = api_get("/v2/activity/sleep?limit=14", token)
     if "_auth_error" in sleep:
         return None
+    if "_error" in sleep:
+        errors["sleep"] = sleep["_error"]
     data["sleep"] = sleep.get("records", []) if "_error" not in sleep else []
 
     workout = api_get("/v2/activity/workout?limit=14", token)
     if "_auth_error" in workout:
         return None
+    if "_error" in workout:
+        errors["workout"] = workout["_error"]
     data["workout"] = workout.get("records", []) if "_error" not in workout else []
 
     cycles = api_get("/v2/cycle?limit=14", token)
     if "_auth_error" in cycles:
         return None
+    if "_error" in cycles:
+        errors["cycles"] = cycles["_error"]
     data["cycles"] = cycles.get("records", []) if "_error" not in cycles else []
 
     body = api_get("/v2/user/measurement/body", token)
     if "_auth_error" in body:
         return None
+    if "_error" in body:
+        errors["body"] = body["_error"]
     data["body"] = body if "_error" not in body else {}
 
+    if errors:
+        data["_errors"] = errors
+        print(f"WARNING: Partial fetch failures: {errors}", file=sys.stderr)
     return data
 
 

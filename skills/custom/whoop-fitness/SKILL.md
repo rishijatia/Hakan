@@ -1,12 +1,13 @@
 ---
 name: whoop-fitness
 description: "WHOOP fitness integration — daily sleep/recovery/strain profiles, token auto-refresh, and summary delivery via Hermes stdout."
-version: 1.0.0
-author: Hermes Agent
-metadata:
-  hermes:
-    tags: [fitness, whoop, health, sleep, recovery, hermes]
-    related_skills: [google-workspace]
+triggers:
+  - whoop
+  - recovery
+  - sleep score
+  - strain
+  - fitness data
+  - workout data
 ---
 
 # WHOOP Fitness Integration

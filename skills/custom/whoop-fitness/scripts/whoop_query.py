@@ -102,6 +102,7 @@ def api_get(path, token, retries=3):
 def fetch_fresh(token, days=30):
     """Fetch fresh data from API. Returns None on auth error, dict on success."""
     data = {}
+    errors = {}
     endpoints = [
         ("profile", "/v2/user/profile/basic", False),
         ("body", "/v2/user/measurement/body", False),
@@ -114,10 +115,15 @@ def fetch_fresh(token, days=30):
         result = api_get(path, token)
         if "_auth_error" in result:
             return None
+        if "_error" in result:
+            errors[key] = result["_error"]
         if is_list:
             data[key] = result.get("records", []) if "_error" not in result else []
         else:
             data[key] = result if "_error" not in result else {}
+    if errors:
+        data["_errors"] = errors
+        print(f"WARNING: Partial fetch failures: {errors}", file=sys.stderr)
     return data
 
 
