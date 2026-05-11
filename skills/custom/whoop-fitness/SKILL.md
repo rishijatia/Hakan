@@ -15,7 +15,7 @@ Daily WHOOP data sync with automatic token refresh and Telegram summaries. Provi
 
 ## How It Works
 
-1. **Daily cron** runs at **12:00 UTC** (= 8am EDT in summer, 7am EST in winter — cron is UTC-fixed so the local ET time shifts with DST) → fetches WHOOP data → sends Telegram summary
+1. **Daily cron** runs at **12:00 UTC** (= 8am EDT in summer / 7am EST in winter). **Note: the correct schedule is `0 12 * * *`, which is 12pm UTC — not 8am UTC (which would be 4am ET and wrong).** Cron is UTC-fixed so the ET display time shifts by 1 hour with DST. → fetches WHOOP data → sends Telegram summary
 2. **Token auto-refresh** using `offline` scope refresh token (no re-auth needed)
 3. **Profile file** at `/opt/data/whoop/daily_profile.json` is readable by Hermes for contextual awareness
 
@@ -27,7 +27,7 @@ Daily WHOOP data sync with automatic token refresh and Telegram summaries. Provi
 ├── daily_profile.json       # Latest profile summary (JSON: {timestamp, summary_text})
 ├── daily_profile_raw.json   # Latest raw API data (JSON)
 
-skills/whoop-fitness/scripts/
+skills/custom/whoop-fitness/scripts/
 ├── whoop_daily.py           # Main daily sync script (cron target)
 ├── whoop_query.py           # On-demand Q&A data fetcher
 └── run_coach.py             # WHOOP-powered running coach
@@ -128,7 +128,7 @@ Sleep records include `end` time which is the user's wake-up time. Scripts conve
 When Rishi asks fitness questions, use the WHOOP data to answer. Two approaches:
 
 ### 1. Use cached data (fast)
-Read `/opt/data/whoop/daily_profile_raw.json` — contains last 14 days of data. Good for most questions.
+Read `/opt/data/whoop/daily_profile_raw.json` — contains data from the last fetch. The daily cron (`whoop_daily.py`) fetches the last 14 records per endpoint; on-demand runs via `whoop_query.py` default to 30 days (configurable). Check the file's timestamp to confirm freshness.
 
 ### 2. Fetch fresh data (if needed)
 ```bash

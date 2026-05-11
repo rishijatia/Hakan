@@ -376,7 +376,8 @@ def build_weekly_review(data):
         total_sleep_ms = sum(s.get("score", {}).get("stage_summary", {}).get("total_in_bed_time_milli", 0) for s in sleeps[:7])
         avg_sleep_ms = total_sleep_ms / min(len(sleeps), 7)
         debt_ms = compute_sleep_debt(sleeps, 7)
-        lines.append(f"😴 Avg sleep: {ms_to_hm(int(avg_sleep_ms))} | Perf: {avg_perf:.0f}% {perf_trend}")
+        perf_str = f"{avg_perf:.0f}%" if avg_perf is not None else "N/A"
+        lines.append(f"😴 Avg sleep: {ms_to_hm(int(avg_sleep_ms))} | Perf: {perf_str} {perf_trend or ''}")
         if debt_ms > 0:
             lines.append(f"💤 Cumulative sleep debt: {ms_to_hm(debt_ms)}")
 
@@ -385,7 +386,10 @@ def build_weekly_review(data):
         best = max(recs[:7], key=lambda r: r.get("score", {}).get("recovery_score", 0))
         best_date = best.get("created_at", "")[:10]
         best_score = best.get("score", {}).get("recovery_score", 0)
-        lines.append(f"💚 Avg recovery: {avg_rec:.0f} {rec_trend} | Best: {best_score:.0f} on {best_date}")
+        if avg_rec is not None:
+            lines.append(f"💚 Avg recovery: {avg_rec:.0f} {rec_trend} | Best: {best_score:.0f} on {best_date}")
+        else:
+            lines.append(f"💚 Best recovery: {best_score:.0f} on {best_date}")
 
     # Observations
     lines.append("")
