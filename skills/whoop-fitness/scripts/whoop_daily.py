@@ -5,20 +5,14 @@ import json
 import os
 import sys
 import time
-import tempfile
-import urllib.parse
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
-from zoneinfo import ZoneInfo
 
 TOKENS_FILE = Path("/opt/data/whoop/tokens.json")
 PROFILE_FILE = Path("/opt/data/whoop/daily_profile.json")
 BASE_URL = "https://api.prod.whoop.com/developer"
 TOKEN_URL = "https://api.prod.whoop.com/oauth/oauth2/token"
-ET = ZoneInfo("America/New_York")
-
-# Ensure data directory exists
-TOKENS_FILE.parent.mkdir(parents=True, exist_ok=True)
+ET_OFFSET = timedelta(hours=-4)  # EDT
 
 
 def load_tokens():
@@ -27,31 +21,23 @@ def load_tokens():
 
 
 def save_tokens(data):
-    """Write tokens atomically with restrictive permissions."""
-    fd, tmp_path = tempfile.mkstemp(dir=TOKENS_FILE.parent, suffix=".tmp")
-    try:
-        with os.fdopen(fd, "w") as f:
-            json.dump(data, f, indent=2)
-        os.chmod(tmp_path, 0o600)
-        os.replace(tmp_path, TOKENS_FILE)
-    except Exception:
-        os.unlink(tmp_path)
-        raise
+    with open(TOKENS_FILE, "w") as f:
+        json.dump(data, f, indent=2)
 
 
 def utc_to_et(utc_str):
     """Convert ISO UTC string to ET datetime."""
     dt = datetime.fromisoformat(utc_str.replace("Z", "+00:00"))
-    return dt.astimezone(ET)
+    return dt.astimezone(timezone(ET_OFFSET))
 
 
 def ms_to_hm(ms):
     """Convert milliseconds to Xh Ym string."""
-    h = ms // 3600000
-    m = (ms % 3600000) // 60000
+    h = int(ms // 3600000)
+    m = int((ms % 3600000) // 60000)
     if h > 0:
-        return f"{h}h {m}m"
-    return f"{m}m"
+        return f"{h}h {m}min"
+    return f"{m}min"
 
 
 def refresh_access_token(tokens):
@@ -83,7 +69,7 @@ def refresh_access_token(tokens):
         return None
 
     tokens["access_token"] = result["access_token"]
-    tokens["refresh_token"] = result.get("refresh_token", tokens["refresh_token"])
+    tokens["refresh_token"] = result["refresh_token"]
     tokens["expires_at"] = datetime.now(timezone.utc).isoformat()
     save_tokens(tokens)
     return tokens["access_token"]
@@ -121,37 +107,28 @@ def api_get(path, token, retries=3):
 
 
 def fetch_all(token):
-    """Fetch latest data from all endpoints. Returns None on auth error."""
+    """Fetch latest data from all endpoints."""
     data = {}
 
-    def _fetch(path, is_list=True):
-        result = api_get(path, token)
-        if "_auth_error" in result:
-            return None
-        if is_list:
-            return result.get("records", []) if "_error" not in result else []
-        return result if "_error" not in result else {}
-
-    profile = _fetch("/v2/user/profile/basic", is_list=False)
-    if profile is None:
+    profile = api_get("/v2/user/profile/basic", token)
+    if "_auth_error" in profile:
         return None
     data["profile"] = profile
 
-    for key, path in [
-        ("recovery", "/v2/recovery?limit=14"),
-        ("sleep", "/v2/activity/sleep?limit=14"),
-        ("workout", "/v2/activity/workout?limit=14"),
-        ("cycles", "/v2/cycle?limit=14"),
-    ]:
-        result = _fetch(path)
-        if result is None:
-            return None
-        data[key] = result
+    recovery = api_get("/v2/recovery?limit=14", token)
+    data["recovery"] = recovery.get("records", []) if "_error" not in recovery else []
 
-    body = _fetch("/v2/user/measurement/body", is_list=False)
-    if body is None:
-        return None
-    data["body"] = body
+    sleep = api_get("/v2/activity/sleep?limit=14", token)
+    data["sleep"] = sleep.get("records", []) if "_error" not in sleep else []
+
+    workout = api_get("/v2/activity/workout?limit=14", token)
+    data["workout"] = workout.get("records", []) if "_error" not in workout else []
+
+    cycles = api_get("/v2/cycle?limit=14", token)
+    data["cycles"] = cycles.get("records", []) if "_error" not in cycles else []
+
+    body = api_get("/v2/user/measurement/body", token)
+    data["body"] = body if "_error" not in body else {}
 
     return data
 
@@ -240,7 +217,7 @@ def sport_display(name):
 
 def build_coaching_briefing(data):
     """Build an action-oriented morning briefing — coach, not dashboard."""
-    now_et = datetime.now(ET)
+    now_et = datetime.now(timezone(ET_OFFSET))
     lines = [f"🌅 Good morning, Rishi", ""]
 
     # Recovery
@@ -349,7 +326,7 @@ def build_coaching_briefing(data):
 
 def build_weekly_review(data):
     """Build a Sunday weekly review."""
-    now_et = datetime.now(ET)
+    now_et = datetime.now(timezone(ET_OFFSET))
     lines = [f"📊 Week in Review — {now_et.strftime('%b %d')}", ""]
 
     workouts = data.get("workout", [])
@@ -420,7 +397,7 @@ def main():
             error_profile = {
                 "timestamp": datetime.now(timezone.utc).isoformat(),
                 "error": "Token refresh failed. User needs to re-authorize.",
-                "auth_url": f"https://api.prod.whoop.com/oauth/oauth2/auth?response_type=code&client_id={tokens['client_id']}&redirect_uri={urllib.parse.quote(tokens.get('redirect_uri', ''), safe='')}&scope=read%3Arecovery+read%3Asleep+read%3Aworkout+read%3Acycles+read%3Aprofile+read%3Abody_measurement+offline&state={os.urandom(4).hex()}"
+                "auth_url": f"https://api.prod.whoop.com/oauth/oauth2/auth?response_type=code&client_id={tokens['client_id']}&redirect_uri=https%3A%2F%2Fhermes-gateway.fly.dev%2Fcallback&scope=read%3Arecovery+read%3Asleep+read%3Aworkout+read%3Acycles+read%3Aprofile+read%3Abody_measurement+offline&state=rereauth01"
             }
             with open(PROFILE_FILE, "w") as f:
                 json.dump(error_profile, f, indent=2)
@@ -436,7 +413,7 @@ def main():
         json.dump(data, f, indent=2, default=str)
 
     # Determine if it's Sunday (weekly review) or daily briefing
-    now_et = datetime.now(ET)
+    now_et = datetime.now(timezone(ET_OFFSET))
     if now_et.weekday() == 6:  # Sunday
         summary = build_weekly_review(data)
     else:
