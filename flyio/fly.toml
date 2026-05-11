@@ -1,24 +1,16 @@
-# fly.toml app configuration file generated for hermes-gateway on 2026-05-10T21:02:14-04:00
-#
-# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
-#
-
 app = 'hermes-gateway'
 primary_region = 'fra'
 
 [build]
-  dockerfile = 'Dockerfile'
+  image = "nousresearch/hermes-agent:latest"
 
-[env]
-  HERMES_HOME = '/root/.hermes'
+[processes]
+  app = "gateway run"
 
-[http_service]
-  internal_port = 8080
-  force_https = true
-  auto_stop_machines = 'off'
-  auto_start_machines = true
-  min_machines_running = 1
+[[mounts]]
+  source = "data"
+  destination = "/opt/data"
 
 [[vm]]
-  size = 'shared-cpu-1x'
-  memory = '512mb'
+  memory = "2gb"
+  cpus = 1
