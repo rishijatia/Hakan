@@ -6,17 +6,21 @@ Commands: brief | post-run | digest | q <question>
 import json
 import os
 import sys
+import tempfile
 import time
-import math
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 # Paths
 TOKENS_FILE = Path("/opt/data/whoop/tokens.json")
 PROFILE_FILE = Path("/opt/data/whoop/daily_profile_raw.json")
 BASE_URL = "https://api.prod.whoop.com/developer"
 TOKEN_URL = "https://api.prod.whoop.com/oauth/oauth2/token"
-ET_OFFSET = timedelta(hours=-4)  # EDT
+ET_TZ = ZoneInfo("America/New_York")
+
+# Ensure data directory exists on first run
+TOKENS_FILE.parent.mkdir(parents=True, exist_ok=True)
 
 # Rishi's config
 MAX_HR = 194  # observed max HR
@@ -34,15 +38,23 @@ HR_ZONES = {
 Z2_CAP = 136  # top of Z2
 
 
-# ── Token management (same as whoop_daily.py) ──────────────────────────────
+# ── Token management ────────────────────────────────────────────────────────
 
 def load_tokens():
     with open(TOKENS_FILE) as f:
         return json.load(f)
 
 def save_tokens(data):
-    with open(TOKENS_FILE, "w") as f:
-        json.dump(data, f, indent=2)
+    """Write tokens atomically with restrictive permissions."""
+    fd, tmp_path = tempfile.mkstemp(dir=TOKENS_FILE.parent, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(data, f, indent=2)
+        os.chmod(tmp_path, 0o600)
+        os.replace(tmp_path, TOKENS_FILE)
+    except Exception:
+        os.unlink(tmp_path)
+        raise
 
 def refresh_access_token(tokens):
     import urllib.request, urllib.parse
@@ -65,9 +77,13 @@ def refresh_access_token(tokens):
     if "error" in result:
         print(f"ERROR: {result}", file=sys.stderr)
         return None
+    if "access_token" not in result:
+        print("ERROR: Token refresh response missing access_token", file=sys.stderr)
+        return None
     tokens["access_token"] = result["access_token"]
-    tokens["refresh_token"] = result["refresh_token"]
-    tokens["expires_at"] = datetime.now(timezone.utc).isoformat()
+    tokens["refresh_token"] = result.get("refresh_token", tokens["refresh_token"])
+    expires_in = result.get("expires_in", 3600)
+    tokens["expires_at"] = (datetime.now(timezone.utc) + timedelta(seconds=expires_in)).isoformat()
     save_tokens(tokens)
     return tokens["access_token"]
 
@@ -81,6 +97,17 @@ def api_get(path, token, retries=3):
             req.add_header("User-Agent", "Mozilla/5.0 hermes-runcoach/1.0")
             with urllib.request.urlopen(req, timeout=30) as resp:
                 return json.loads(resp.read())
+        except urllib.error.HTTPError as e:
+            if e.code == 429:
+                time.sleep(2 ** attempt * 5)
+                continue
+            elif e.code == 401:
+                return {"_auth_error": True}
+            elif e.code >= 500:
+                time.sleep(2 ** attempt * 2)
+                continue
+            else:
+                return {"_error": f"HTTP {e.code}"}
         except Exception as e:
             if attempt < retries - 1:
                 time.sleep(2 ** attempt)
@@ -95,14 +122,24 @@ def fetch_all(token):
         return None
     data["profile"] = profile
     recovery = api_get("/v2/recovery?limit=30", token)
+    if "_auth_error" in recovery:
+        return None
     data["recovery"] = recovery.get("records", []) if "_error" not in recovery else []
     sleep = api_get("/v2/activity/sleep?limit=30", token)
+    if "_auth_error" in sleep:
+        return None
     data["sleep"] = sleep.get("records", []) if "_error" not in sleep else []
     workout = api_get("/v2/activity/workout?limit=30", token)
+    if "_auth_error" in workout:
+        return None
     data["workout"] = workout.get("records", []) if "_error" not in workout else []
     cycles = api_get("/v2/cycle?limit=14", token)
+    if "_auth_error" in cycles:
+        return None
     data["cycles"] = cycles.get("records", []) if "_error" not in cycles else []
     body = api_get("/v2/user/measurement/body", token)
+    if "_auth_error" in body:
+        return None
     data["body"] = body if "_error" not in body else {}
     return data
 
@@ -111,7 +148,7 @@ def fetch_all(token):
 
 def utc_to_et(utc_str):
     dt = datetime.fromisoformat(utc_str.replace("Z", "+00:00"))
-    return dt.astimezone(timezone(ET_OFFSET))
+    return dt.astimezone(ET_TZ)
 
 def ms_to_hm(ms):
     h = int(ms) // 3600000
@@ -138,7 +175,7 @@ def get_workout_duration_ms(w):
             s = datetime.fromisoformat(w["start"].replace("Z", "+00:00"))
             e = datetime.fromisoformat(w["end"].replace("Z", "+00:00"))
             return (e - s).total_seconds() * 1000
-        except:
+        except Exception:
             pass
     return 0
 
@@ -188,7 +225,7 @@ def get_run_volume_km(runs, days=7):
                 dist = r.get("score", {}).get("distance_meter")
                 if dist:
                     total += dist / 1000
-        except:
+        except Exception:
             pass
     return total
 
@@ -199,7 +236,7 @@ def days_since_last_run(runs):
         last = datetime.fromisoformat(runs[0]["start"].replace("Z", "+00:00"))
         delta = datetime.now(timezone.utc) - last
         return delta.days
-    except:
+    except Exception:
         return 99
 
 def compute_sleep_debt(sleeps, days=7):
@@ -221,7 +258,7 @@ def aggregate_run_zones(runs, days=14):
                 zones = get_zone_durations(r.get("score", {}))
                 for k in agg:
                     agg[k] += zones[k]
-        except:
+        except Exception:
             pass
     return agg
 
@@ -260,7 +297,7 @@ def cmd_brief():
         print("❌ Cannot load WHOOP data. Re-auth may be needed.")
         return
 
-    now_et = datetime.now(timezone(ET_OFFSET))
+    now_et = datetime.now(ET_TZ)
     recs = data.get("recovery", [])
     sleeps = data.get("sleep", [])
     workouts = data.get("workout", [])
@@ -442,7 +479,6 @@ def cmd_post_run():
     # Zone audit
     z4_z5_pct = pcts["z4"] + pcts["z5"]
     z2_pct = pcts["z2"]
-    total_active = sum(zones.values()) - zones["z0"]
 
     if z4_z5_pct > 30:
         lines.append(f"🚨 *Zone Audit: TOO MUCH HIGH INTENSITY*")
@@ -499,7 +535,7 @@ def cmd_digest():
         print("❌ Cannot load WHOOP data.")
         return
 
-    now_et = datetime.now(timezone(ET_OFFSET))
+    now_et = datetime.now(ET_TZ)
     workouts = data.get("workout", [])
     runs = get_runs(workouts)
     recs = data.get("recovery", [])

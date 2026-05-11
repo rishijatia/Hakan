@@ -102,7 +102,7 @@ def fetch_fresh(token, days=30):
     data = {}
     endpoints = [
         ("profile", "/v2/user/profile/basic", False),
-        ("body", "/v2/user/measurement/body", True),
+        ("body", "/v2/user/measurement/body", False),
         ("recovery", f"/v2/recovery?limit={days}", True),
         ("sleep", f"/v2/activity/sleep?limit={days}", True),
         ("workout", f"/v2/activity/workout?limit={days}", True),
@@ -134,9 +134,16 @@ def main():
             print(json.dumps({"error": "AUTH_FAILED"}))
             return
 
-    # Cache it
-    with open(CACHE_FILE, "w") as f:
-        json.dump(data, f, indent=2, default=str)
+    # Cache it atomically with restrictive permissions
+    fd, tmp_path = tempfile.mkstemp(dir=CACHE_FILE.parent, suffix=".tmp")
+    try:
+        with os.fdopen(fd, "w") as f:
+            json.dump(data, f, indent=2, default=str)
+        os.chmod(tmp_path, 0o600)
+        os.replace(tmp_path, CACHE_FILE)
+    except Exception:
+        os.unlink(tmp_path)
+        raise
 
     print(json.dumps(data, indent=2, default=str))
 
