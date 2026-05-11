@@ -96,6 +96,7 @@ def refresh_access_token(tokens):
 def api_get(path, token, retries=3):
     """GET request with retry and timeout."""
     import urllib.request
+    import urllib.error
 
     url = f"{BASE_URL}{path}"
     for attempt in range(retries):
@@ -277,8 +278,12 @@ def build_coaching_briefing(data):
         debt_ms = compute_sleep_debt(sleeps, 7)
 
         # Wake time
-        wake_et = utc_to_et(sl["end"])
-        wake_str = wake_et.strftime("%-I:%M%p").lower()
+        end = sl.get("end")
+        if end:
+            wake_et = utc_to_et(end)
+            wake_str = wake_et.strftime("%-I:%M%p").lower()
+        else:
+            wake_str = "?"
 
         lines.append(f"😴 Sleep: {ms_to_hm(total_ms)} | Perf: {perf:.0f}% | Woke: {wake_str}")
 
@@ -292,8 +297,8 @@ def build_coaching_briefing(data):
     if workouts:
         w = workouts[0]
         w_start = w.get("start", "")
-        if w_start[:10] == (now_et - timedelta(days=1)).strftime("%Y-%m-%d") or \
-           w_start[:10] == now_et.strftime("%Y-%m-%d"):
+        w_date_et = utc_to_et(w_start).strftime("%Y-%m-%d") if w_start else ""
+        if w_date_et in ((now_et - timedelta(days=1)).strftime("%Y-%m-%d"), now_et.strftime("%Y-%m-%d")):
             sc = w.get("score", {})
             dur_ms = 0
             if w.get("start") and w.get("end"):

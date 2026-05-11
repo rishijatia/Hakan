@@ -6,7 +6,7 @@ import os
 import sys
 import time
 import tempfile
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 TOKENS_FILE = Path("/opt/data/whoop/tokens.json")
@@ -63,13 +63,15 @@ def refresh_access_token(tokens):
         return None
     tokens["access_token"] = result["access_token"]
     tokens["refresh_token"] = result.get("refresh_token", tokens["refresh_token"])
-    tokens["expires_at"] = datetime.now(timezone.utc).isoformat()
+    expires_in = result.get("expires_in", 3600)
+    tokens["expires_at"] = (datetime.now(timezone.utc) + timedelta(seconds=expires_in)).isoformat()
     save_tokens(tokens)
     return tokens["access_token"]
 
 
 def api_get(path, token, retries=3):
     import urllib.request
+    import urllib.error
     url = f"{BASE_URL}{path}"
     for attempt in range(retries):
         try:

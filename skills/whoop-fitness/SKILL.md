@@ -15,7 +15,7 @@ Daily WHOOP data sync with automatic token refresh and Telegram summaries. Provi
 
 ## How It Works
 
-1. **Daily cron** runs at 12pm UTC (8am EDT / 7am EST — cron is UTC-fixed, DST shifts the local time) → fetches WHOOP data → sends Telegram summary
+1. **Daily cron** runs at **12:00 UTC** (= 8am EDT in summer, 7am EST in winter — cron is UTC-fixed so the local ET time shifts with DST) → fetches WHOOP data → sends Telegram summary
 2. **Token auto-refresh** using `offline` scope refresh token (no re-auth needed)
 3. **Profile file** at `/opt/data/whoop/daily_profile.json` is readable by Hermes for contextual awareness
 

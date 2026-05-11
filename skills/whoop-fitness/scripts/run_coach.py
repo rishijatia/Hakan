@@ -89,6 +89,7 @@ def refresh_access_token(tokens):
 
 def api_get(path, token, retries=3):
     import urllib.request
+    import urllib.error
     url = f"{BASE_URL}{path}"
     for attempt in range(retries):
         try:
@@ -558,7 +559,14 @@ def cmd_digest():
     month_km = get_run_volume_km(runs, 28)
     avg_weekly_km = month_km / 4 if month_km > 0 else 0
 
-    run_count_7d = len([r for r in runs if days_since_last_run([r]) <= 7])
+    _cutoff_7d = datetime.now(timezone.utc) - timedelta(days=7)
+    run_count_7d = 0
+    for _r in runs:
+        try:
+            if datetime.fromisoformat(_r["start"].replace("Z", "+00:00")) >= _cutoff_7d:
+                run_count_7d += 1
+        except Exception:
+            pass
 
     if week_km > avg_weekly_km * 1.15:
         trend = "↗️ up"
@@ -792,7 +800,15 @@ def cmd_question(question):
         if recs:
             s = recs[0].get("score", {})
             lines.append(f"  Recovery: {s.get('recovery_score', 0):.0f} | HRV: {s.get('hrv_rmssd_milli', 0):.0f}ms")
-        lines.append(f"  Runs this week: {len([r for r in runs if days_since_last_run([r]) <= 7])}")
+        _cutoff = datetime.now(timezone.utc) - timedelta(days=7)
+        _runs_this_week = 0
+        for _r in runs:
+            try:
+                if datetime.fromisoformat(_r["start"].replace("Z", "+00:00")) >= _cutoff:
+                    _runs_this_week += 1
+            except Exception:
+                pass
+        lines.append(f"  Runs this week: {_runs_this_week}")
         week_km = get_run_volume_km(runs, 7)
         lines.append(f"  Volume: {week_km:.1f} km")
         lines.append(f"\n  Try asking about: zones, recovery, sleep, pace, volume, injury risk")
