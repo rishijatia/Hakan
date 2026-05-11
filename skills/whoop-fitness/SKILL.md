@@ -15,7 +15,7 @@ Daily WHOOP data sync with automatic token refresh and Telegram summaries. Provi
 
 ## How It Works
 
-1. **Daily cron** runs at 8am ET (12pm UTC) → fetches WHOOP data → sends Telegram summary
+1. **Daily cron** runs at 12pm UTC (8am EDT / 7am EST — cron is UTC-fixed, DST shifts the local time) → fetches WHOOP data → sends Telegram summary
 2. **Token auto-refresh** using `offline` scope refresh token (no re-auth needed)
 3. **Profile file** at `/opt/data/whoop/daily_profile.json` is readable by Hermes for contextual awareness
 
@@ -24,12 +24,13 @@ Daily WHOOP data sync with automatic token refresh and Telegram summaries. Provi
 ```
 /opt/data/whoop/
 ├── tokens.json              # OAuth tokens (access + refresh + client credentials)
-├── daily_profile.json       # Latest human-readable profile summary
+├── daily_profile.json       # Latest profile summary (JSON: {timestamp, summary_text})
 ├── daily_profile_raw.json   # Latest raw API data (JSON)
 
-scripts/whoop-fitness/scripts/
+skills/whoop-fitness/scripts/
 ├── whoop_daily.py           # Main daily sync script (cron target)
-└── whoop_query.py           # On-demand Q&A data fetcher
+├── whoop_query.py           # On-demand Q&A data fetcher
+└── run_coach.py             # WHOOP-powered running coach
 
 Install: symlink or copy scripts into `/opt/data/scripts/` for cron access.
 ```
@@ -57,9 +58,10 @@ curl -s -X POST https://api.prod.whoop.com/oauth/oauth2/token \
   -d "client_id=<CLIENT_ID>" \
   -d "client_secret=<CLIENT_SECRET>" \
   -d "redirect_uri=<REDIRECT_URI>" | python3 -c "
-import sys, json
+import sys, json, os
 d = json.load(sys.stdin)
-open('/opt/data/whoop/tokens.json','w').write(json.dumps({
+path = '/opt/data/whoop/tokens.json'
+open(path,'w').write(json.dumps({
     'access_token': d['access_token'],
     'refresh_token': d.get('refresh_token',''),
     'expires_at': '',
@@ -67,6 +69,7 @@ open('/opt/data/whoop/tokens.json','w').write(json.dumps({
     'client_secret': '<CLIENT_SECRET>',
     'redirect_uri': '<REDIRECT_URI>'
 }, indent=2))
+os.chmod(path, 0o600)
 print(f'Saved. refresh_token: {len(d.get(\"refresh_token\",\"\"))} chars')
 "
 ```
@@ -82,7 +85,7 @@ cronjob create --name "WHOOP Daily Profile" --schedule "0 12 * * *" --script who
 
 - **Base URL:** `https://api.prod.whoop.com/developer`
 - **Auth:** OAuth 2.0 with `offline` scope for refresh tokens
-- **Token expiry:** 1 hour (auto-refreshed before each use)
+- **Token expiry:** 1 hour (auto-refreshed after 401 response)
 - **Endpoints used:**
   - `GET /v2/user/profile/basic` — name, email
   - `GET /v2/user/measurement/body` — height, weight, max HR
@@ -94,13 +97,13 @@ cronjob create --name "WHOOP Daily Profile" --schedule "0 12 * * *" --script who
 ## Token Refresh Flow
 
 ```
-On fetch (after 401 auth error):
-1. Read tokens.json
-2. If API returns 401:
+On fetch:
+1. Attempt all API calls with current access_token
+2. If any endpoint returns 401:
    a. POST to /oauth/oauth2/token with grant_type=refresh_token
-   b. Save new access_token + new refresh_token
-   c. If refresh fails → write error profile with re-auth URL
-3. Proceed with API call
+   b. Save new access_token (keep existing refresh_token if none returned)
+   c. Retry full fetch with new token
+   d. If refresh fails → write error profile JSON with re-auth URL (built from stored redirect_uri)
 ```
 
 ## Pitfalls
@@ -118,7 +121,7 @@ On fetch (after 401 auth error):
 
 ## Wake Time Tracking
 
-Sleep records include `end` time which is the user's wake-up time. Convert from UTC to ET (UTC-4 during EDT, UTC-5 during EST). Typical wake window: 7:50–9:00 AM ET.
+Sleep records include `end` time which is the user's wake-up time. Scripts convert from UTC to ET using `zoneinfo.ZoneInfo('America/New_York')` (DST-aware). Typical wake window: 7:50–9:00 AM ET.
 
 ## Q&A Support
 
