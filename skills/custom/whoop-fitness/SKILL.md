@@ -1,6 +1,6 @@
 ---
 name: whoop-fitness
-description: "WHOOP fitness integration — daily sleep/recovery/strain profiles, token auto-refresh, and Telegram summaries."
+description: "WHOOP fitness integration — daily sleep/recovery/strain profiles, token auto-refresh, and summary delivery via Hermes."
 version: 1.0.0
 author: Hermes Agent
 metadata:
@@ -11,11 +11,11 @@ metadata:
 
 # WHOOP Fitness Integration
 
-Daily WHOOP data sync with automatic token refresh and Telegram summaries. Provides contextual awareness of the user's sleep, recovery, strain, and workout history.
+Daily WHOOP data sync with automatic token refresh and summary delivery via Hermes. Provides contextual awareness of the user's sleep, recovery, strain, and workout history.
 
 ## How It Works
 
-1. **Daily cron** runs at **12:00 UTC** (= 8am EDT in summer / 7am EST in winter). **Note: the correct schedule is `0 12 * * *`, which is 12pm UTC — not 8am UTC (which would be 4am ET and wrong).** Cron is UTC-fixed so the ET display time shifts by 1 hour with DST. → fetches WHOOP data → sends Telegram summary
+1. **Daily cron** runs at **12:00 UTC** (= 8am EDT in summer / 7am EST in winter). **Note: the correct schedule is `0 12 * * *`, which is 12pm UTC — not 8am UTC (which would be 4am ET and wrong).** Cron is UTC-fixed so the ET display time shifts by 1 hour with DST. → fetches WHOOP data → outputs summary to stdout (captured by Hermes for delivery)
 2. **Token auto-refresh** using `offline` scope refresh token (no re-auth needed)
 3. **Profile file** at `/opt/data/whoop/daily_profile.json` is readable by Hermes for contextual awareness
 

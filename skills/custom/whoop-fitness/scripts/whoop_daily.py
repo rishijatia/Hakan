@@ -297,7 +297,10 @@ def build_coaching_briefing(data):
     if workouts:
         w = workouts[0]
         w_start = w.get("start", "")
-        w_date_et = utc_to_et(w_start).strftime("%Y-%m-%d") if w_start else ""
+        try:
+            w_date_et = utc_to_et(w_start).strftime("%Y-%m-%d") if w_start else ""
+        except (ValueError, KeyError):
+            w_date_et = ""
         if w_date_et in ((now_et - timedelta(days=1)).strftime("%Y-%m-%d"), now_et.strftime("%Y-%m-%d")):
             sc = w.get("score", {})
             dur_ms = 0
@@ -458,6 +461,20 @@ def main():
             return
         data = fetch_all(new_token)
         if data is None:
+            # Write error profile so downstream consumers see the failure
+            error_profile = {
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "error": "Token refresh succeeded but API still returns auth error. Re-authorization may be needed.",
+            }
+            fd, tmp_path = tempfile.mkstemp(dir=PROFILE_FILE.parent, suffix=".tmp")
+            try:
+                with os.fdopen(fd, "w") as f:
+                    json.dump(error_profile, f, indent=2)
+                os.chmod(tmp_path, 0o600)
+                os.replace(tmp_path, PROFILE_FILE)
+            except Exception:
+                os.unlink(tmp_path)
+                raise
             print("ERROR: Still auth error after refresh", file=sys.stderr)
             return
 
