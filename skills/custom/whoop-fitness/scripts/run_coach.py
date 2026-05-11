@@ -444,7 +444,11 @@ def cmd_post_run():
 
     w = runs[0]
     sc = w.get("score", {})
-    start_et = utc_to_et(w["start"])
+    w_start = w.get("start")
+    if not w_start:
+        print("❌ Most recent run missing start time.")
+        return
+    start_et = utc_to_et(w_start)
     dur_ms = get_workout_duration_ms(w)
     dur_sec = dur_ms / 1000
     dist_m = sc.get("distance_meter")
@@ -789,7 +793,7 @@ def cmd_question(question):
             lines.append(f"  🚨 Sleep debt {ms_to_hm(debt)} → impaired tissue repair")
             risk_factors += 1
         if recs and recs[0].get("score", {}).get("recovery_score", 0) < 40:
-            lines.append(f"  🚨 Current recovery very low ({recs[0]['score']['recovery_score']:.0f})")
+            lines.append(f"  🚨 Current recovery very low ({recs[0].get('score', {}).get('recovery_score', 0):.0f})")
             risk_factors += 1
         if risk_factors == 0:
             lines.append(f"  ✅ No major risk factors detected. Keep training smart.")
