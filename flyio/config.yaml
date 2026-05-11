@@ -154,9 +154,9 @@ bedrock:
     trace: disabled
 auxiliary:
   vision:
-    provider: auto
-    model: ''
-    base_url: ''
+    provider: openrouter
+    model: google/gemini-2.0-flash-001
+    base_url: https://openrouter.ai/api/v1
     api_key: ''
     timeout: 120
     extra_body: {}
