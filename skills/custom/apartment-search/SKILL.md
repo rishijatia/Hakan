@@ -121,6 +121,16 @@ See `references/nybits-neighborhoods.md` for the complete list. Key ones:
 5. **In-unit W/D not in search filters** — must check individual listing descriptions
 6. **`submit` button naming conflict** — NYBits names its submit button `submit`,
    which shadows `form.submit()`. Use `btn.click()` instead.
+7. **⚠️ NYBits pricing can be STALE** — prices shown may not match current StreetEasy
+   or building-site listings. User reported a listing showing $5,700 on NYBits but
+   $6,895 on the actual site. Always verify prices on the building's own website or
+   StreetEasy before presenting to the user. NYBits is useful for *discovery* (finding
+   buildings/neighborhoods with inventory) but NOT as a source of truth for pricing.
+8. **Browserbase plan requirements** — residential proxies and advanced stealth (needed
+   for StreetEasy/Zillow) require Browserbase **Scale plan**, not Launch. The API returns
+   402 for proxies on Launch plan, and the code gracefully falls back to no proxies.
+   Without proxies, Browserbase sessions are blocked by the same captchas as local Chrome.
+   See `references/browserbase-plans.md` for details.
 
 ## Multi-Source Strategy (Future)
 

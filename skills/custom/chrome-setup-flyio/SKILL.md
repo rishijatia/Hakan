@@ -60,3 +60,7 @@ ln -sf /opt/data/home/.agent-browser/browsers /opt/data/.agent-browser/browsers
 - Chrome binary is ~277MB; takes ~30s to download
 - `.env` changes require agent restart to take effect
 - Browser tool looks for Chrome in HERMES_HOME path, not HOME path — symlink needed
+- **Browserbase Launch plan doesn't include residential proxies or advanced stealth.**
+  The API returns 402 and Hermes falls back gracefully, but the session is effectively
+  the same as local Chrome from a datacenter IP. StreetEasy/Zillow/Google will still
+  block with captchas. Scale plan required for proxy support.
