@@ -82,12 +82,14 @@ Schema version 1. Each entry:
 - **Track barber loyalty** — note which barbers produce good results
 - **Compare before/after** — call out what changed
 - Photos are private — don't share without explicit ask
-- **GitHub sync:** haircut data syncs nightly to `rishijatia/Hakan` repo via
-  `hakan-nightly-sync` cron job (3am UTC). Photos and log are included.
+- **Never push haircut data to GitHub** — personal photos/logs stay local only
 
 ## Pitfalls
 
-- `vision_analyze` requires OpenRouter API key configured in `auxiliary.vision.api_key`
+- `vision_analyze` requires OpenRouter API key in credential pool (`hermes auth reset openrouter` if exhausted)
+- Photo naming must be consistent for the log to link correctly
+- If user sends multiple before photos, use sequence numbering (01, 02)
+- `vision_analyze` is a gateway-side tool — use `delegate_task` with `toolsets=["vision"]` to call it from the agent
 - Photo naming must be consistent for the log to link correctly
 - If user sends multiple before photos, use sequence numbering (01, 02)
 - **Credential pool exhaustion:** If vision gets a 401 (key not configured), the credential pool marks the key as exhausted and won't retry. Fix: `hermes auth reset openrouter` + restart gateway. See `hermes-agent` skill → `references/flyio-secret-management.md`.
