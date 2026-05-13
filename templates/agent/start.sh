@@ -20,6 +20,10 @@ sync_from_github() {
 }
 
 # Assemble SOUL.md = role-specific base + shared/guardrails.md + shared/peer_rules.md.
+# Sync runtime config from the repo if this agent has one. Same principle
+# as SOUL.md: repo is source of truth; volume edits don't persist.
+sync_from_github "flyio-{{AGENT_NAME}}/config.yaml" "$HERMES_HOME/config.yaml" || true
+
 sync_from_github "flyio-{{AGENT_NAME}}/SOUL.md" "$HERMES_HOME/SOUL.md.base"
 sync_from_github "shared/guardrails.md" "$HERMES_HOME/.shared_guardrails.md"
 sync_from_github "shared/peer_rules.md" "$HERMES_HOME/.shared_peer_rules.md"

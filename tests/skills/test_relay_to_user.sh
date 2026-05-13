@@ -49,4 +49,11 @@ assert_contains "stdin mode reads from pipe" "$out" "piped message"
 out=$(echo "" | bash "$SCRIPT" --dry-run - 2>&1) || true
 assert_contains "empty stdin rejected" "$out" "Usage:"
 
+# 9. RELAY_SKIP_AUDIT=1 takes effect: the script doesn't write an audit
+#    entry even when (in the real path) the relay succeeds. We can't test
+#    the audit-skip directly without mocking curl, but we can at least
+#    verify the env var is recognized by the dry-run path (no crash).
+out=$(RELAY_SKIP_AUDIT=1 bash "$SCRIPT" --dry-run "skip-audit test" 2>&1)
+assert_contains "RELAY_SKIP_AUDIT env var doesn't break dry-run" "$out" "sendMessage"
+
 t_summary

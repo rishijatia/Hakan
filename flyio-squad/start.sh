@@ -19,6 +19,12 @@ sync_from_github() {
     fi
 }
 
+# Sync runtime config from the repo if a squad-specific config.yaml exists.
+# Same principle as SOUL.md: repo is source of truth, volume edits are not
+# persisted. Today the squad uses Hermes defaults bootstrapped by the
+# entrypoint, so this is a no-op unless flyio-squad/config.yaml is added.
+sync_from_github "flyio-squad/config.yaml" "$HERMES_HOME/config.yaml" || true
+
 sync_from_github "flyio-squad/SOUL.md" "$HERMES_HOME/SOUL.md.base"
 
 # Assemble SOUL.md with shared guardrails FIRST (dominant context). See

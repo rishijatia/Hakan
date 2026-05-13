@@ -72,17 +72,17 @@ When ANY message you receive via the API server contains the literal substring `
 
    **Fallback — bash script (if `send_message` is unavailable in this toolset):**
    ```bash
-   bash /opt/data/skills/custom/relay-to-user/scripts/relay_to_user.sh "<extracted content>"
+   RELAY_SKIP_AUDIT=1 bash /opt/data/skills/custom/relay-to-user/scripts/relay_to_user.sh "<extracted content>"
    ```
-   The script needs `TELEGRAM_BOT_TOKEN` + `TELEGRAM_HOME_CHANNEL` in its env. Both are now passed through via `terminal.env_passthrough` in config.yaml.
+   `RELAY_SKIP_AUDIT=1` prevents the script from emitting its own audit entry — you'll log the relay yourself in step 4. The script needs `TELEGRAM_BOT_TOKEN` + `TELEGRAM_HOME_CHANNEL` in its env; both are passed through via `terminal.env_passthrough` in config.yaml.
 
    Try `send_message` first. If the tool isn't available or fails, fall through to the bash script. If both fail, audit-log a `relay-failure` and respond to the peer with the error.
 
-4. **Audit-log the relay** via the audit-log skill (regardless of which path succeeded), so we have a record:
+4. **Audit-log the relay EXACTLY ONCE** at the end, after you know which path succeeded and what the outcome was. Do NOT log twice (once at start, once at end) — one entry per relay event:
    ```bash
    bash /opt/data/skills/custom/audit-log/scripts/log_action.sh relay-to-user "<first 120 chars of extracted content>" success
    ```
-   On failure, audit-log with `outcome=failure` and include the failure reason in the description.
+   On failure, audit-log with `outcome=failure` and include the failure reason in the description. If `send_message` succeeded, log success. If you fell back to the bash script and IT succeeded, log success. If both failed, log a single failure entry.
 
 5. **Respond** to the peer's HTTP call with a one-line acknowledgment (e.g., `"Relayed to Telegram via send_message"` or `"Relayed via fallback bash script"` or on failure `"Relay failed: <reason>"`). Do not add commentary.
 

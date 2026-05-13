@@ -63,18 +63,29 @@ RESPONSE=$(curl -sS -X POST "${API_BASE}/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
     -d parse_mode="$PARSE_MODE" \
     --data-urlencode "text=$MESSAGE")
 
-AUDIT="/opt/data/skills/custom/audit-log/scripts/log_action.sh"
 PREVIEW="${MESSAGE:0:120}"
 [ ${#MESSAGE} -gt 120 ] && PREVIEW="${PREVIEW}..."
+
+# Audit-log only when called directly (e.g., from smoke tests, CLI debug).
+# When the agent calls us via the protocol path, the agent owns the
+# audit-log call — we'd cause duplicate entries by also logging here.
+# Skip our own log when RELAY_SKIP_AUDIT=1 is set by the caller.
+SHOULD_AUDIT=true
+[ "${RELAY_SKIP_AUDIT:-0}" = "1" ] && SHOULD_AUDIT=false
+AUDIT="/opt/data/skills/custom/audit-log/scripts/log_action.sh"
 
 if echo "$RESPONSE" | jq -e '.ok == true' >/dev/null 2>&1; then
     MSG_ID=$(echo "$RESPONSE" | jq -r '.result.message_id')
     echo "Relayed to Telegram (message_id=$MSG_ID)"
-    [ -x "$AUDIT" ] && bash "$AUDIT" relay-to-user "$PREVIEW" success 2>/dev/null || true
+    if [ "$SHOULD_AUDIT" = true ] && [ -x "$AUDIT" ]; then
+        bash "$AUDIT" relay-to-user "$PREVIEW" success 2>/dev/null || true
+    fi
     exit 0
 else
     ERR=$(echo "$RESPONSE" | jq -r '.description // .error // "unknown error"' 2>/dev/null || echo "$RESPONSE")
     echo "Relay failed: $ERR" >&2
-    [ -x "$AUDIT" ] && bash "$AUDIT" relay-to-user "$PREVIEW" failure 2>/dev/null || true
+    if [ "$SHOULD_AUDIT" = true ] && [ -x "$AUDIT" ]; then
+        bash "$AUDIT" relay-to-user "$PREVIEW" failure 2>/dev/null || true
+    fi
     exit 1
 fi

@@ -14,6 +14,7 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # (cheap = SSH/health, expensive = real LLM call).
 TESTS=(
     "test_soul_synced.sh"
+    "test_config_synced.sh"
     "test_skill_sync.sh"
     "test_peer_to_peer.sh"
     "test_audit_log.sh"

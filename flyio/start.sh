@@ -21,6 +21,13 @@ sync_from_github() {
 
 # SOUL.md is always overwritten from the repo on boot.
 # To change it permanently, open a PR — not edit the volume directly.
+# Sync runtime config from the repo. Same principle as SOUL.md: the repo
+# is source of truth; volume edits are not persisted across boots. If
+# Hermes mutates config.yaml at runtime (model auth, etc.), those changes
+# need to be committed back to the repo to survive — or stored as Fly
+# secrets / .env instead.
+sync_from_github "flyio/config.yaml" "$HERMES_HOME/config.yaml"
+
 sync_from_github "flyio/SOUL.md" "$HERMES_HOME/SOUL.md.base"
 
 # Assemble the final SOUL.md.
