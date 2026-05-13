@@ -18,6 +18,7 @@ TESTS=(
     "test_peer_to_peer.sh"
     "test_audit_log.sh"
     "test_tech_lead_refusal.sh"
+    "test_agent_refusal.sh"
 )
 
 PASS=0

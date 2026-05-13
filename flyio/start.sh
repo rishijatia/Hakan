@@ -23,20 +23,24 @@ sync_from_github() {
 # To change it permanently, open a PR — not edit the volume directly.
 sync_from_github "flyio/SOUL.md" "$HERMES_HOME/SOUL.md.base"
 
-# Assemble the final SOUL.md = role-specific base + shared guardrails + peer rules.
-# This way every agent gets identical universal rules without duplication.
+# Assemble the final SOUL.md.
+# Order matters: shared/guardrails.md goes FIRST so the firewall is the
+# dominant context. peer rules second. Role-specific SOUL last — it's the
+# personality layer, not the constraints layer. An earlier ordering put the
+# role-specific section first and the agent rationalized past the firewall
+# ("I'm the gateway, my constraints are different…"). Don't reorder this.
 sync_from_github "shared/guardrails.md" "$HERMES_HOME/.shared_guardrails.md"
 sync_from_github "shared/peer_rules.md" "$HERMES_HOME/.shared_peer_rules.md"
 {
-    cat "$HERMES_HOME/SOUL.md.base"
-    echo
-    echo "---"
-    echo
     cat "$HERMES_HOME/.shared_guardrails.md"
     echo
     echo "---"
     echo
     cat "$HERMES_HOME/.shared_peer_rules.md"
+    echo
+    echo "---"
+    echo
+    cat "$HERMES_HOME/SOUL.md.base"
 } > "$HERMES_HOME/SOUL.md"
 rm -f "$HERMES_HOME/SOUL.md.base" "$HERMES_HOME/.shared_guardrails.md" "$HERMES_HOME/.shared_peer_rules.md"
 

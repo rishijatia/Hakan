@@ -24,15 +24,16 @@ sync_from_github "flyio-{{AGENT_NAME}}/SOUL.md" "$HERMES_HOME/SOUL.md.base"
 sync_from_github "shared/guardrails.md" "$HERMES_HOME/.shared_guardrails.md"
 sync_from_github "shared/peer_rules.md" "$HERMES_HOME/.shared_peer_rules.md"
 {
-    cat "$HERMES_HOME/SOUL.md.base"
-    echo
-    echo "---"
-    echo
+    # Order matters: shared guardrails FIRST (dominant context), role last.
     cat "$HERMES_HOME/.shared_guardrails.md"
     echo
     echo "---"
     echo
     cat "$HERMES_HOME/.shared_peer_rules.md"
+    echo
+    echo "---"
+    echo
+    cat "$HERMES_HOME/SOUL.md.base"
 } > "$HERMES_HOME/SOUL.md"
 rm -f "$HERMES_HOME/SOUL.md.base" "$HERMES_HOME/.shared_guardrails.md" "$HERMES_HOME/.shared_peer_rules.md"
 

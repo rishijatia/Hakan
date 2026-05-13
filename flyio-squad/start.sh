@@ -21,19 +21,20 @@ sync_from_github() {
 
 sync_from_github "flyio-squad/SOUL.md" "$HERMES_HOME/SOUL.md.base"
 
-# Assemble the final SOUL.md = role-specific base + shared guardrails + peer rules.
+# Assemble SOUL.md with shared guardrails FIRST (dominant context). See
+# flyio/start.sh for the reasoning — the order is load-bearing.
 sync_from_github "shared/guardrails.md" "$HERMES_HOME/.shared_guardrails.md"
 sync_from_github "shared/peer_rules.md" "$HERMES_HOME/.shared_peer_rules.md"
 {
-    cat "$HERMES_HOME/SOUL.md.base"
-    echo
-    echo "---"
-    echo
     cat "$HERMES_HOME/.shared_guardrails.md"
     echo
     echo "---"
     echo
     cat "$HERMES_HOME/.shared_peer_rules.md"
+    echo
+    echo "---"
+    echo
+    cat "$HERMES_HOME/SOUL.md.base"
 } > "$HERMES_HOME/SOUL.md"
 rm -f "$HERMES_HOME/SOUL.md.base" "$HERMES_HOME/.shared_guardrails.md" "$HERMES_HOME/.shared_peer_rules.md"
 
