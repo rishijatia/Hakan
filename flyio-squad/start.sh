@@ -19,7 +19,23 @@ sync_from_github() {
     fi
 }
 
-sync_from_github "flyio-squad/SOUL.md" "$HERMES_HOME/SOUL.md"
+sync_from_github "flyio-squad/SOUL.md" "$HERMES_HOME/SOUL.md.base"
+
+# Assemble the final SOUL.md = role-specific base + shared guardrails + peer rules.
+sync_from_github "shared/guardrails.md" "$HERMES_HOME/.shared_guardrails.md"
+sync_from_github "shared/peer_rules.md" "$HERMES_HOME/.shared_peer_rules.md"
+{
+    cat "$HERMES_HOME/SOUL.md.base"
+    echo
+    echo "---"
+    echo
+    cat "$HERMES_HOME/.shared_guardrails.md"
+    echo
+    echo "---"
+    echo
+    cat "$HERMES_HOME/.shared_peer_rules.md"
+} > "$HERMES_HOME/SOUL.md"
+rm -f "$HERMES_HOME/SOUL.md.base" "$HERMES_HOME/.shared_guardrails.md" "$HERMES_HOME/.shared_peer_rules.md"
 
 # Sync the skills/custom/ tree from the GitHub repo. Source of truth lives in
 # the repo so all agents stay in lockstep; volume edits are not persisted.
