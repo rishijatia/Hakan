@@ -2,7 +2,7 @@ app = 'hermes-gateway'
 primary_region = 'fra'
 
 [build]
-  image = "nousresearch/hermes-agent:latest"
+  dockerfile = "Dockerfile"
 
 [processes]
   app = "gateway run"

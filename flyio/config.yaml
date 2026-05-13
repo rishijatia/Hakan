@@ -326,8 +326,8 @@ memory:
   nudge_interval: 10
   flush_min_turns: 6
 delegation:
-  model: ''
-  provider: ''
+  model: google/gemini-2.0-flash-001
+  provider: openrouter
   base_url: ''
   api_key: ''
   inherit_mcp_toolsets: true
