@@ -7,6 +7,12 @@ primary_region = 'fra'
 [processes]
   app = "gateway run"
 
+# API server for inter-app calls (squad → gateway). 6PN-only, no public exposure.
+[env]
+  API_SERVER_ENABLED = "true"
+  API_SERVER_HOST = "fly-local-6pn"
+  API_SERVER_PORT = "8642"
+
 [[mounts]]
   source = "data"
   destination = "/opt/data"

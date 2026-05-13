@@ -1,0 +1,22 @@
+# agents.yaml — registry of peer agents reachable via Fly 6PN private network.
+# Same file is deployed to every Hermes app. Each agent looks up peers by name
+# and uses the listed api_key_env to find the bearer token in its environment.
+#
+# A2A-compatible direction: when issue #514 ships, this maps to Agent Cards.
+
+agents:
+  - name: gateway
+    url: http://hermes-gateway.internal:8642
+    api_key_env: GATEWAY_API_KEY
+    description: |
+      Chief of Staff. User-facing agent with Telegram access. Call this from
+      other agents when you need to relay a message to the user, ask for
+      clarification, or report task completion.
+
+  - name: squad
+    url: http://hermes-coding-squad.internal:8642
+    api_key_env: SQUAD_API_KEY
+    description: |
+      Coding Squad. Specialized in code work — implementation, PR opening,
+      review handling. Call from the gateway to delegate any task whose
+      primary output is code or repo changes.

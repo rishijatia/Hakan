@@ -23,6 +23,14 @@ sync_from_github() {
 # To change it permanently, open a PR — not edit the volume directly.
 sync_from_github "flyio/SOUL.md" "$HERMES_HOME/SOUL.md"
 
+# Force API_SERVER_HOST to the literal 6PN IPv6 address.
+# proxychains4 (active because PROXY_HOST is set) intercepts getaddrinfo()
+# and returns a fake 224.x.x.x address for any hostname like "fly-local-6pn".
+# Using FLY_PRIVATE_IP (already an IPv6 literal) bypasses DNS entirely.
+if [ -n "${FLY_PRIVATE_IP:-}" ]; then
+    export API_SERVER_HOST="$FLY_PRIVATE_IP"
+fi
+
 if [ -n "$PROXY_HOST" ] && [ -n "$PROXY_PORT" ]; then
     cat > /etc/proxychains4.conf << EOF
 strict_chain
