@@ -1,0 +1,13 @@
+#!/bin/bash
+# .githooks/pre-commit
+#
+# Runs static checks on staged files before allowing a commit.
+# Enable once with:
+#   git config core.hooksPath .githooks
+#
+# Bypass with:
+#   git commit --no-verify   (use sparingly)
+set -uo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+exec bash "$REPO_ROOT/tests/lint/run_all.sh" --staged
