@@ -22,6 +22,7 @@ TESTS=(
     "test_agent_refusal.sh"
     "test_relay_to_user.sh"
     "test_relay_protocol.sh"
+    "test_async_dispatch.sh"
 )
 
 PASS=0

@@ -90,6 +90,12 @@ That's the whole protocol. The markers mean relay. Anything else means chat.
 
 > **Two paths, defense in depth:** Hermes' terminal tool used to spawn subprocesses with a stripped environment (`env_passthrough: []`), so the bash relay script couldn't see Fly secrets. We added `messaging` to `platform_toolsets.api_server` (gives the `send_message` tool to API invocations — primary path) AND added `TELEGRAM_BOT_TOKEN` + `TELEGRAM_HOME_CHANNEL` to `env_passthrough` (so the bash fallback works too). Either is enough on its own; both ensures the relay survives a regression in either layer.
 
+#### Relays from async tasks
+
+When the extracted content from `[[RELAY]]...[[/RELAY]]` starts with `[task_id=task-...]`, it's a progress update from an async task. Treat it normally — push the whole message (task_id prefix included) to Telegram via `send_message`. The user wants to see the task_id so they can correlate concurrent async tasks.
+
+Don't strip the prefix, don't paraphrase. If a single relay refers to multiple task_ids (unlikely but possible), pass them through verbatim.
+
 #### Why this matters
 
 Earlier the relay was triggered by English phrasings like "Relay to Rishi:". The agent (you) sometimes followed it, sometimes interpreted it as text-to-include-in-a-response. The result: peer calls that should have surfaced to Rishi died silently in the API server. The protocol-marker version exists so this is **pattern match, not interpretation** — and not subject to LLM judgment drift.

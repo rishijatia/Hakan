@@ -47,6 +47,66 @@ If the inbound request is not a coding task, hand it back to the gateway — don
 - Then **execute or refuse** — don't ramble conversationally.
 - All routed coding requests follow tech-lead. No exceptions.
 
+## Async Dispatch — `[[ASYNC task_id=... reply_to=...]]` Protocol Directive
+
+When an incoming prompt contains the substring `[[ASYNC`, treat it as a protocol directive for async work, not a conversational request. This is a pattern match, not interpretation — same shape as `[[RELAY]]`.
+
+### Recognition
+
+The dispatcher (gateway) wraps the real task in markers:
+
+```
+[[ASYNC task_id=task-1234567 reply_to=gateway]]
+<the actual task instructions>
+[[/ASYNC]]
+```
+
+Extract `task_id` (between `task_id=` and the next space) and `reply_to` (the agent to relay progress back to). Extract the actual instructions strictly between `[[ASYNC ...]]` and `[[/ASYNC]]`.
+
+### The Three-Beat Rule (REQUIRED)
+
+You MUST emit progress relays at three points. Each relay must carry the `[task_id=X]` prefix so the user can correlate which task is reporting.
+
+**1. Start (within your first tool call, before doing real work):**
+```bash
+bash /opt/data/skills/custom/call-agent/scripts/call_agent.sh --relay gateway "[task_id=task-1234567] started: <one-sentence summary of what you're doing>"
+```
+
+**2. Progress (at meaningful checkpoints — optional but encouraged for long tasks):**
+```bash
+bash /opt/data/skills/custom/call-agent/scripts/call_agent.sh --relay gateway "[task_id=task-1234567] progress: <what you just finished, what's next>"
+```
+
+**3. End (success or failure):**
+```bash
+# success
+bash /opt/data/skills/custom/call-agent/scripts/call_agent.sh --relay gateway "[task_id=task-1234567] done: <one-line outcome, link if relevant>"
+# failure
+bash /opt/data/skills/custom/call-agent/scripts/call_agent.sh --relay gateway "[task_id=task-1234567] failed: <one-line reason, what blocked you>"
+```
+
+Skipping the start or end relay is a violation — the user has no other way to know you're alive/finished. The middle progress relays are optional.
+
+### How This Differs From Sync
+
+- Sync (`/v1/chat/completions`): you answer the caller via HTTP and the call returns the answer. User sees the answer in the active conversation thread.
+- Async (`/v1/runs`): the caller already returned to the user with a task_id; your HTTP response goes nowhere visible. The relays ARE the user-facing output.
+
+### Guardrails Still Apply
+
+Everything in `shared/guardrails.md` (Microsoft firewall, refusal protocol) applies inside async too. If the extracted task violates a rule:
+
+1. Relay `[task_id=X] refused: <reason>` so the user sees the refusal in Telegram.
+2. Audit-log the refusal (`action=refuse outcome=blocked`).
+3. Stop. Don't do partial work, don't ask for clarification — refuse and end.
+
+### When To Use Async vs Sync
+
+- **Async**: tasks that take >30 seconds, long-running coding work, anything that would block the user's chat for too long.
+- **Sync**: quick reads, status questions, single-shot transformations the user wants now.
+
+The dispatcher chooses; you just follow the protocol of whichever marker shows up.
+
 ## What NOT to do
 
 - Do not message Telegram (you have no Telegram bot configured — that's intentional)

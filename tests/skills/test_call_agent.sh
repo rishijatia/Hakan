@@ -74,4 +74,26 @@ assert_not_contains "no relay markers when --relay absent" "$out" "[[RELAY]]"
 out=$(bash "$SCRIPT" --dry-run --relay alpha "either order" 2>&1)
 assert_contains "--dry-run before --relay still wraps" "$out" "[[RELAY]]"
 
+# 10. --async wraps with [[ASYNC task_id=... reply_to=gateway]] markers and
+#     targets /v1/runs instead of /v1/chat/completions.
+out=$(bash "$SCRIPT" --async --dry-run alpha "do the thing" 2>&1)
+assert_contains "--async adds [[ASYNC marker"        "$out" "[[ASYNC"
+assert_contains "--async adds task_id in marker"     "$out" "task_id=task-"
+assert_contains "--async adds reply_to in marker"    "$out" "reply_to=gateway"
+assert_contains "--async closes with [[/ASYNC]]"     "$out" "[[/ASYNC]]"
+assert_contains "--async targets /v1/runs endpoint"  "$out" "/v1/runs"
+assert_contains "--async preserves the prompt body"  "$out" "do the thing"
+
+# 11. --async returns task_id summary to stdout (in dry-run)
+assert_contains "--async prints task_id"             "$out" "task_id=task-"
+
+# 12. --async + --relay is rejected (mutually exclusive)
+out=$(bash "$SCRIPT" --async --relay alpha "x" 2>&1) || true
+assert_contains "rejects --async + --relay together" "$out" "mutually exclusive"
+
+# 13. Sync mode (no flags) does NOT emit ASYNC markers
+out=$(bash "$SCRIPT" --dry-run alpha "sync only" 2>&1)
+assert_not_contains "no ASYNC markers when sync"     "$out" "[[ASYNC"
+assert_contains    "sync uses /v1/chat/completions"  "$out" "/v1/chat/completions"
+
 t_summary
