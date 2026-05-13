@@ -9,7 +9,9 @@ FAILED=0
 TEST="audit-log"
 
 # Unique marker so we can find this exact entry in the log.
-MARKER="smoke-$(date +%s)-$$"
+# Hex marker — long numeric strings get redacted to [PHONE] by Hermes'
+# secret-redaction layer, breaking grep-based assertions.
+MARKER="smoke-$(openssl rand -hex 6)"
 
 # 1. Trigger a peer call on the gateway with the marker in the prompt.
 flyssh "$GATEWAY_APP" \

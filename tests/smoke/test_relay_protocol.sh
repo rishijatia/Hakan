@@ -13,7 +13,9 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FAILED=0
 TEST="relay-protocol"
 
-MARKER="protocol-smoke-$(date +%s)"
+# Hex marker — long numeric strings get redacted to [PHONE] by Hermes'
+# secret-redaction layer, breaking grep-based assertions.
+MARKER="protocol-smoke-$(openssl rand -hex 6)"
 MESSAGE="[SMOKE] cross-agent relay protocol test ${MARKER} - please ignore."
 
 # 1. Squad calls gateway with --relay flag. This should:

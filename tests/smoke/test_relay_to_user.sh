@@ -15,7 +15,9 @@ DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 FAILED=0
 TEST="relay-to-user"
 
-MARKER="smoke-$(date +%s)"
+# Hex marker — long numeric strings get redacted to [PHONE] by Hermes'
+# secret-redaction layer, breaking grep-based assertions.
+MARKER="smoke-$(openssl rand -hex 6)"
 # Plain ASCII only — emoji + en-dash break the multi-layer SSH/bash quoting
 # when passed through fly ssh console -C "bash -c '...'".
 MESSAGE="[SMOKE] relay-to-user test ${MARKER} - please ignore."
