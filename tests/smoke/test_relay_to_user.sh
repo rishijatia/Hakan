@@ -16,7 +16,9 @@ FAILED=0
 TEST="relay-to-user"
 
 MARKER="smoke-$(date +%s)"
-MESSAGE="🧪 relay-to-user smoke test ${MARKER} — ignore."
+# Plain ASCII only — emoji + en-dash break the multi-layer SSH/bash quoting
+# when passed through fly ssh console -C "bash -c '...'".
+MESSAGE="[SMOKE] relay-to-user test ${MARKER} - please ignore."
 
 # 1. Dry-run first (doesn't hit Telegram). Cheap sanity check on the gateway's
 #    environment + script wiring.
