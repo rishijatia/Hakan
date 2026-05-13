@@ -12,8 +12,9 @@ TEST="soul-synced"
 
 # Picks one stable marker line from each of the three source files. The
 # assembled SOUL.md on the volume must contain all three.
-GUARDRAILS_MARKER="Shared Guardrails (apply to EVERY agent)"
-PEER_RULES_MARKER="Peer Rules — Honor Other Agents' Guardrails"
+# Use short markers so heading-text tweaks don't break this test.
+GUARDRAILS_MARKER="Shared Guardrails"
+PEER_RULES_MARKER="Peer Rules"
 
 check_soul() {
     local app="$1" repo_base_path="$2" base_marker="$3"
