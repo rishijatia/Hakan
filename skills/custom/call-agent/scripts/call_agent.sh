@@ -17,6 +17,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEFAULT_REGISTRY="$(dirname "$SCRIPT_DIR")/references/agents.yaml"
 AGENTS_YAML="${AGENTS_YAML:-$DEFAULT_REGISTRY}"
 
+# Use Hermes' venv python — it has PyYAML installed.
+PYTHON="${PYTHON:-/opt/hermes/.venv/bin/python3}"
+[ -x "$PYTHON" ] || PYTHON=python3
+
 RETURN_JSON=false
 if [ "${1:-}" = "--json" ]; then
     RETURN_JSON=true
@@ -28,7 +32,7 @@ if [ -z "$AGENT_NAME" ]; then
     echo "Usage: $0 [--json] <agent-name> \"prompt text\"" >&2
     echo "Available agents:" >&2
     yq -r '.agents[].name' "$AGENTS_YAML" 2>/dev/null | sed 's/^/  - /' >&2 \
-        || python3 -c "import yaml,sys; [print(f'  - {a[\"name\"]}') for a in yaml.safe_load(open('$AGENTS_YAML'))['agents']]" >&2
+        || "$PYTHON" -c "import yaml,sys; [print(f'  - {a[\"name\"]}') for a in yaml.safe_load(open('$AGENTS_YAML'))['agents']]" >&2
     exit 1
 fi
 shift
@@ -45,7 +49,7 @@ if [ -z "$PROMPT" ]; then
 fi
 
 # Look up agent details from the registry (use python since yq may not be installed)
-read -r AGENT_URL AGENT_KEY_ENV < <(python3 -c "
+read -r AGENT_URL AGENT_KEY_ENV < <("$PYTHON" -c "
 import yaml, sys
 with open('$AGENTS_YAML') as f:
     reg = yaml.safe_load(f)
