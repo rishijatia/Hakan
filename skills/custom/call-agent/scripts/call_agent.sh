@@ -102,10 +102,12 @@ TASK_ID=""
 if [ "$IS_RELAY" = true ]; then
     PROMPT="[[RELAY]]${PROMPT}[[/RELAY]]"
 elif [ "$IS_ASYNC" = true ]; then
-    # Stable, locally-generated task_id. We include it in the prompt so
-    # the squad's progress relays can carry it. /v1/runs also returns a
-    # Hermes-side run_id which we expose alongside for direct status query.
-    TASK_ID="task-$(date +%s)-$$"
+    # Stable, locally-generated task_id. Hex-only (no long numeric runs)
+    # so Hermes' secret-redaction layer doesn't mistake it for a phone
+    # number and rewrite it to "[PHONE]" — that was the original failure
+    # mode here. 12-char hex is short, unique enough for personal use,
+    # grep-friendly.
+    TASK_ID="task-$(openssl rand -hex 6 2>/dev/null || head -c 6 /dev/urandom | xxd -p)"
     PROMPT="[[ASYNC task_id=${TASK_ID} reply_to=gateway]]${PROMPT}[[/ASYNC]]"
 fi
 

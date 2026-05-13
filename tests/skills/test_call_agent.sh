@@ -79,6 +79,14 @@ assert_contains "--dry-run before --relay still wraps" "$out" "[[RELAY]]"
 out=$(bash "$SCRIPT" --async --dry-run alpha "do the thing" 2>&1)
 assert_contains "--async adds [[ASYNC marker"        "$out" "[[ASYNC"
 assert_contains "--async adds task_id in marker"     "$out" "task_id=task-"
+# task_id must be hex-only — Hermes' secret-redaction rewrites long numeric
+# strings to [PHONE]. Verify with an extract.
+TID=$(echo "$out" | sed -n 's/.*task_id=\(task-[a-z0-9-]*\).*/\1/p' | head -1)
+if echo "$TID" | grep -qE '^task-[a-f0-9]+$'; then
+    t_pass "task_id format is hex-only ($TID)"
+else
+    t_fail "task_id is not pure hex" "got: $TID — secret-redaction may rewrite it"
+fi
 assert_contains "--async adds reply_to in marker"    "$out" "reply_to=gateway"
 assert_contains "--async closes with [[/ASYNC]]"     "$out" "[[/ASYNC]]"
 assert_contains "--async targets /v1/runs endpoint"  "$out" "/v1/runs"
