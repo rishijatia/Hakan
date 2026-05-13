@@ -33,17 +33,17 @@ Send a prompt to another Hermes agent over Fly.io's 6PN private network and get 
 
 ```bash
 # Discover available agents
-bash /opt/data/skills/multi-agent/call-agent/scripts/call_agent.sh
+bash /opt/data/skills/custom/call-agent/scripts/call_agent.sh
 
 # Call a specific agent
-bash /opt/data/skills/multi-agent/call-agent/scripts/call_agent.sh squad "Implement X in repo Y"
-bash /opt/data/skills/multi-agent/call-agent/scripts/call_agent.sh gateway "Tell Rishi: build X complete, ready for review"
+bash /opt/data/skills/custom/call-agent/scripts/call_agent.sh squad "Implement X in repo Y"
+bash /opt/data/skills/custom/call-agent/scripts/call_agent.sh gateway "Tell Rishi: build X complete, ready for review"
 
 # Get raw JSON (when you need full response metadata)
-bash /opt/data/skills/multi-agent/call-agent/scripts/call_agent.sh --json squad "..."
+bash /opt/data/skills/custom/call-agent/scripts/call_agent.sh --json squad "..."
 
 # Read prompt from stdin (handy for long prompts)
-cat plan.md | bash /opt/data/skills/multi-agent/call-agent/scripts/call_agent.sh squad -
+cat plan.md | bash /opt/data/skills/custom/call-agent/scripts/call_agent.sh squad -
 ```
 
 ## Required Environment

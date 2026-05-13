@@ -23,6 +23,33 @@ sync_from_github() {
 # To change it permanently, open a PR — not edit the volume directly.
 sync_from_github "flyio/SOUL.md" "$HERMES_HOME/SOUL.md"
 
+# Sync the skills/custom/ tree from the GitHub repo. Source of truth lives in
+# the repo so all agents stay in lockstep; volume edits are not persisted.
+sync_skills_from_github() {
+    if [ -z "${GITHUB_PAT:-}" ]; then
+        echo "Warning: GITHUB_PAT not set — skipping skills sync (using existing files)"
+        return
+    fi
+    local tmpdir
+    tmpdir=$(mktemp -d)
+    local clone_url="https://x-access-token:${GITHUB_PAT}@github.com/${REPO}.git"
+    if git clone --quiet --depth=1 --branch "$BRANCH" "$clone_url" "$tmpdir" 2>/dev/null; then
+        if [ -d "$tmpdir/skills/custom" ]; then
+            mkdir -p "$HERMES_HOME/skills"
+            rm -rf "$HERMES_HOME/skills/custom"
+            cp -r "$tmpdir/skills/custom" "$HERMES_HOME/skills/custom"
+            find "$HERMES_HOME/skills/custom" -name '*.sh' -exec chmod +x {} \;
+            echo "Synced skills/custom/ from GitHub ($(find "$HERMES_HOME/skills/custom" -name 'SKILL.md' | wc -l) skill(s))"
+        else
+            echo "Warning: skills/custom/ not present in repo — keeping existing files"
+        fi
+    else
+        echo "Warning: git clone failed — keeping existing skills"
+    fi
+    rm -rf "$tmpdir"
+}
+sync_skills_from_github
+
 # Force API_SERVER_HOST to the literal 6PN IPv6 address.
 # proxychains4 (active because PROXY_HOST is set) intercepts getaddrinfo()
 # and returns a fake 224.x.x.x address for any hostname like "fly-local-6pn".
