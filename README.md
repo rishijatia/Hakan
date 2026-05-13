@@ -149,6 +149,12 @@ fly machine restart -a hermes-gateway $(fly machines list -a hermes-gateway --js
 
 Useful when you've pushed a new SOUL.md or skill to the repo and want it picked up without rebuilding the image.
 
+**Important distinction:**
+- `fly machine restart` re-runs the **existing** `start.sh` baked into the deployed image. It does pull updated SOUL.md, `skills/custom/`, and `shared/*.md` from GitHub (those are fetched on every boot). It does **not** pick up changes to `start.sh`, `Dockerfile`, or `fly.toml` itself.
+- `fly deploy` rebuilds the image. Required for any change to `start.sh`, `Dockerfile`, dependencies, env vars, or VM config.
+
+When in doubt, deploy.
+
 ## Adding a Skill
 
 1. Create `skills/custom/<name>/SKILL.md` with required frontmatter (`name` matching the directory, `description`, `version`).
