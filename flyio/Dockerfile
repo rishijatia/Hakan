@@ -12,3 +12,8 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 RUN uv pip install --python /opt/hermes/.venv/bin/python python-telegram-bot discord.py
+
+COPY flyio/start.sh /start.sh
+RUN chmod +x /start.sh
+
+ENTRYPOINT ["/usr/bin/tini", "-g", "--", "/start.sh"]
