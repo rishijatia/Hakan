@@ -22,14 +22,27 @@ PYTHON="${PYTHON:-/opt/hermes/.venv/bin/python3}"
 [ -x "$PYTHON" ] || PYTHON=python3
 
 RETURN_JSON=false
-if [ "${1:-}" = "--json" ]; then
-    RETURN_JSON=true
-    shift
-fi
+IS_RELAY=false
+DRY_RUN=false
+
+# Flags can appear in any order before the agent name.
+while true; do
+    case "${1:-}" in
+        --json)    RETURN_JSON=true; shift ;;
+        --relay)   IS_RELAY=true;    shift ;;
+        --dry-run) DRY_RUN=true;     shift ;;
+        *) break ;;
+    esac
+done
 
 AGENT_NAME="${1:-}"
 if [ -z "$AGENT_NAME" ]; then
-    echo "Usage: $0 [--json] <agent-name> \"prompt text\"" >&2
+    echo "Usage: $0 [--json] [--relay] [--dry-run] <agent-name> \"prompt text\"" >&2
+    echo "  --relay   wrap the prompt in [[RELAY]]...[[/RELAY]] markers so the" >&2
+    echo "            receiving agent treats it as a protocol directive (push" >&2
+    echo "            to user via its messaging adapter) rather than a chat" >&2
+    echo "            request. Today only 'gateway' handles relay markers." >&2
+    echo "  --dry-run print the assembled payload to stderr and exit (no HTTP)." >&2
     echo "Available agents:" >&2
     yq -r '.agents[].name' "$AGENTS_YAML" 2>/dev/null | sed 's/^/  - /' >&2 \
         || "$PYTHON" -c "import yaml,sys; [print(f'  - {a[\"name\"]}') for a in yaml.safe_load(open('$AGENTS_YAML'))['agents']]" >&2
@@ -67,10 +80,25 @@ if [ -z "$API_KEY" ]; then
     exit 1
 fi
 
+# If --relay, wrap the prompt with protocol markers. The receiving agent
+# is expected to detect these and route to its messaging adapter, bypassing
+# normal chat-completion processing. Markers chosen to be unmistakable
+# (unlikely in normal prose) and easy to grep for in audit logs.
+if [ "$IS_RELAY" = true ]; then
+    PROMPT="[[RELAY]]${PROMPT}[[/RELAY]]"
+fi
+
 PAYLOAD=$(jq -n --arg p "$PROMPT" '{
   model: "hermes-agent",
   messages: [{role: "user", content: $p}]
 }')
+
+if [ "$DRY_RUN" = true ]; then
+    echo "[dry-run] would POST to $AGENT_URL/v1/chat/completions"
+    echo "[dry-run] payload:"
+    echo "$PAYLOAD" | "$PYTHON" -m json.tool
+    exit 0
+fi
 
 RESPONSE=$(curl -sS -X POST "$AGENT_URL/v1/chat/completions" \
     -H "Authorization: Bearer $API_KEY" \

@@ -51,4 +51,27 @@ AGENTS_YAML=/nonexistent/path/agents.yaml
 out=$(bash "$SCRIPT" alpha "hi" 2>&1) || true
 assert_contains "missing yaml errors" "$out" "not found"
 
+# Restore the fixture for the remaining tests.
+export AGENTS_YAML="$TMP/agents.yaml"
+export ALPHA_KEY="fake-key-for-test"
+
+# 6. --dry-run prints the payload and never hits the network
+out=$(bash "$SCRIPT" --dry-run alpha "hello there" 2>&1)
+assert_contains "--dry-run mentions URL" "$out" "alpha.internal:9999"
+assert_contains "--dry-run shows prompt in payload" "$out" "hello there"
+
+# 7. --relay wraps the prompt with protocol markers (verify via --dry-run)
+out=$(bash "$SCRIPT" --relay --dry-run alpha "PR ready" 2>&1)
+assert_contains "--relay adds [[RELAY]] open marker" "$out" "[[RELAY]]"
+assert_contains "--relay adds [[/RELAY]] close marker" "$out" "[[/RELAY]]"
+assert_contains "--relay wraps the actual prompt"     "$out" "PR ready"
+
+# 8. Without --relay, no markers added
+out=$(bash "$SCRIPT" --dry-run alpha "plain message" 2>&1)
+assert_not_contains "no relay markers when --relay absent" "$out" "[[RELAY]]"
+
+# 9. Flag ordering shouldn't matter
+out=$(bash "$SCRIPT" --dry-run --relay alpha "either order" 2>&1)
+assert_contains "--dry-run before --relay still wraps" "$out" "[[RELAY]]"
+
 t_summary

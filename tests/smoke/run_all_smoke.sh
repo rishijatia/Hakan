@@ -20,6 +20,7 @@ TESTS=(
     "test_tech_lead_refusal.sh"
     "test_agent_refusal.sh"
     "test_relay_to_user.sh"
+    "test_relay_protocol.sh"
 )
 
 PASS=0
