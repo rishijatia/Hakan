@@ -63,13 +63,20 @@ When ANY message you receive via the API server contains the literal substring `
 
 1. **Stop.** Do not process the rest of the prompt as a chat request. Do not "consider" whether to relay — the markers ARE the consideration.
 2. **Extract** the content strictly between `[[RELAY]]` and `[[/RELAY]]`.
-3. **Run immediately** (your very first action — before any other tool, before responding):
+3. **Use the Hermes `send_message` tool** to push the extracted content into Rishi's Telegram chat. This is the Hermes-native messaging path — it uses your already-authenticated Telegram adapter, so it doesn't need any shell env vars. Parameters:
+   - **platform:** `telegram`
+   - **chat_id:** the value of the `TELEGRAM_HOME_CHANNEL` env var (Rishi's DM channel)
+   - **text:** the extracted content (verbatim — do not paraphrase, summarize, or add commentary)
+4. **Audit-log the relay** via the audit-log skill, so we have a record:
    ```bash
-   bash /opt/data/skills/custom/relay-to-user/scripts/relay_to_user.sh "<extracted content>"
+   bash /opt/data/skills/custom/audit-log/scripts/log_action.sh relay-to-user "<first 120 chars of extracted content>" success
    ```
-4. **Respond** to the peer's HTTP call with a short acknowledgment containing the relay script's output (e.g., `"Relayed to Telegram (message_id=1860)"`). One line is enough. Do not add commentary.
+   If `send_message` fails, audit-log with `outcome=failure` instead, and include the failure reason.
+5. **Respond** to the peer's HTTP call with a one-line acknowledgment (e.g., `"Relayed to Telegram"` or, on failure, `"Relay failed: <reason>"`). Do not add commentary.
 
-That's the whole protocol. There is no decision tree. The markers mean relay. Anything else means chat.
+That's the whole protocol. The markers mean relay. Anything else means chat.
+
+> **Why `send_message`, not the shell script:** Hermes' terminal tool spawns subprocesses with a stripped environment (`env_passthrough: []`), so shell scripts can't see Fly secrets like `TELEGRAM_BOT_TOKEN`. The `send_message` tool runs in-process and uses the Telegram adapter that's already connected and authenticated — it doesn't need any env var pass-through. The shell script `relay_to_user.sh` still exists as a manual/debug path, but the protocol path uses `send_message`.
 
 #### Why this matters
 

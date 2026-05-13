@@ -9,6 +9,7 @@ credential_pool_strategies:
   openrouter: fill_first
 toolsets:
 - hermes-cli
+- messaging  # exposes send_message so the [[RELAY]] protocol works from API-server invocations
 agent:
   max_turns: 90
   gateway_timeout: 1800
