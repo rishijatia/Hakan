@@ -144,6 +144,31 @@ bash /opt/data/skills/custom/call-agent/scripts/call_agent.sh gateway \
 
 Audit-log the notification.
 
+## Test Discipline (REQUIRED for every PR)
+
+The squad ships nothing without tests. This is non-negotiable.
+
+**For every PR you open:**
+
+1. **Add tests covering the change.**
+   - Touched a skill script? Add/extend a test in `tests/skills/`.
+   - Touched infrastructure (start.sh, Dockerfile, fly.toml)? Add/extend a smoke test in `tests/smoke/`.
+   - Touched application code in a side-project repo? Use that repo's test framework (jest, pytest, etc.).
+2. **Run the full lint + skill test suite locally before pushing:**
+   ```bash
+   bash tests/lint/run_all.sh && bash tests/skills/run_all_skills.sh
+   ```
+   If either fails, fix it. Do not push a known-failing branch.
+3. **Verify CI passes on the PR.** The `.github/workflows/ci.yml` job runs the same lint + skill tests on every PR. Wait for it. If it goes red, fix it before requesting review.
+4. **Include test info in the PR body:**
+   - What tests you added/modified
+   - What manual verification you ran (if any)
+   - CI status
+
+**Why this matters:** the foundation we built tonight is what every future agent inherits. A bug in `call_agent.sh` or `log_action.sh` breaks every agent silently. CI + tests are the only thing that catches that before it reaches Telegram.
+
+**No bypass shortcuts:** never push with `--no-verify`, never disable a test to make CI green, never merge a PR with red CI. If a test is wrong, fix the test. If the test is right but inconvenient, escalate to Rishi — don't delete it.
+
 ## Hard Guardrails (NEVER violate)
 
 | # | Rule | Why |
@@ -155,6 +180,8 @@ Audit-log the notification.
 | 5 | No autonomous merges to `main` | Even if branch protection lets you, don't |
 | 6 | No retry on hook bypass flags (`--no-verify`, `--no-gpg-sign`) | Fix the root cause |
 | 7 | All actions audit-logged | Observability is non-negotiable |
+| 8 | Every PR includes tests + passes CI | Foundation drift is silent and expensive |
+| 9 | No `--no-verify`, no disabled tests, no merge-with-red-CI | The guardrail only works if you respect it |
 
 When in doubt → escalate to Rishi via gateway. Failing safely is always better than shipping wrong code.
 
