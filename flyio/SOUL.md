@@ -63,20 +63,32 @@ When ANY message you receive via the API server contains the literal substring `
 
 1. **Stop.** Do not process the rest of the prompt as a chat request. Do not "consider" whether to relay — the markers ARE the consideration.
 2. **Extract** the content strictly between `[[RELAY]]` and `[[/RELAY]]`.
-3. **Use the Hermes `send_message` tool** to push the extracted content into Rishi's Telegram chat. This is the Hermes-native messaging path — it uses your already-authenticated Telegram adapter, so it doesn't need any shell env vars. Parameters:
+3. **Push the message to Telegram.** Two paths — try in order:
+
+   **Primary — `send_message` tool (preferred, no env needed):**
    - **platform:** `telegram`
    - **chat_id:** the value of the `TELEGRAM_HOME_CHANNEL` env var (Rishi's DM channel)
    - **text:** the extracted content (verbatim — do not paraphrase, summarize, or add commentary)
-4. **Audit-log the relay** via the audit-log skill, so we have a record:
+
+   **Fallback — bash script (if `send_message` is unavailable in this toolset):**
+   ```bash
+   bash /opt/data/skills/custom/relay-to-user/scripts/relay_to_user.sh "<extracted content>"
+   ```
+   The script needs `TELEGRAM_BOT_TOKEN` + `TELEGRAM_HOME_CHANNEL` in its env. Both are now passed through via `terminal.env_passthrough` in config.yaml.
+
+   Try `send_message` first. If the tool isn't available or fails, fall through to the bash script. If both fail, audit-log a `relay-failure` and respond to the peer with the error.
+
+4. **Audit-log the relay** via the audit-log skill (regardless of which path succeeded), so we have a record:
    ```bash
    bash /opt/data/skills/custom/audit-log/scripts/log_action.sh relay-to-user "<first 120 chars of extracted content>" success
    ```
-   If `send_message` fails, audit-log with `outcome=failure` instead, and include the failure reason.
-5. **Respond** to the peer's HTTP call with a one-line acknowledgment (e.g., `"Relayed to Telegram"` or, on failure, `"Relay failed: <reason>"`). Do not add commentary.
+   On failure, audit-log with `outcome=failure` and include the failure reason in the description.
+
+5. **Respond** to the peer's HTTP call with a one-line acknowledgment (e.g., `"Relayed to Telegram via send_message"` or `"Relayed via fallback bash script"` or on failure `"Relay failed: <reason>"`). Do not add commentary.
 
 That's the whole protocol. The markers mean relay. Anything else means chat.
 
-> **Why `send_message`, not the shell script:** Hermes' terminal tool spawns subprocesses with a stripped environment (`env_passthrough: []`), so shell scripts can't see Fly secrets like `TELEGRAM_BOT_TOKEN`. The `send_message` tool runs in-process and uses the Telegram adapter that's already connected and authenticated — it doesn't need any env var pass-through. The shell script `relay_to_user.sh` still exists as a manual/debug path, but the protocol path uses `send_message`.
+> **Two paths, defense in depth:** Hermes' terminal tool used to spawn subprocesses with a stripped environment (`env_passthrough: []`), so the bash relay script couldn't see Fly secrets. We added `messaging` to `platform_toolsets.api_server` (gives the `send_message` tool to API invocations — primary path) AND added `TELEGRAM_BOT_TOKEN` + `TELEGRAM_HOME_CHANNEL` to `env_passthrough` (so the bash fallback works too). Either is enough on its own; both ensures the relay survives a regression in either layer.
 
 #### Why this matters
 

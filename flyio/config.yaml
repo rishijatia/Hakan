@@ -69,7 +69,9 @@ terminal:
   modal_mode: auto
   cwd: /opt/data/workspace
   timeout: 180
-  env_passthrough: []
+  env_passthrough:
+    - TELEGRAM_BOT_TOKEN      # fallback path for relay_to_user.sh if send_message is unavailable
+    - TELEGRAM_HOME_CHANNEL   # ditto — bash script reads this for chat_id
   shell_init_files: []
   auto_source_bashrc: true
   docker_image: nikolaik/python-nodejs:python3.11-nodejs20
@@ -457,6 +459,9 @@ streaming:
 platform_toolsets:
   cli:
   - hermes-cli
+  api_server:                # primary [[RELAY]] path needs send_message; also keep hermes-cli for terminal+files
+  - hermes-cli
+  - messaging
   telegram:
   - browser
   - clarify
