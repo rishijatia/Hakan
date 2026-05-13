@@ -1,5 +1,6 @@
 ---
 name: apartment-search
+version: 0.1.0
 description: >
   Search NYC apartment listings using NYBits (no-bot-detection). Works from
   headless servers where StreetEasy/Zillow/Apartments.com block with captchas.

@@ -1,5 +1,6 @@
 ---
 name: fitness-api-integrations
+version: 0.1.0
 description: Connect to wearable/fitness device APIs (WHOOP, Fitbit, Garmin, Apple Health, Oura) — OAuth setup, scopes, approval requirements, Python libraries, and data access patterns.
 triggers:
   - whoop data

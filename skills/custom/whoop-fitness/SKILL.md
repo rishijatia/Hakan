@@ -1,5 +1,6 @@
 ---
 name: whoop-fitness
+version: 0.1.0
 description: "WHOOP fitness integration — daily sleep/recovery/strain profiles, token auto-refresh, and summary delivery via Hermes stdout."
 triggers:
   - whoop

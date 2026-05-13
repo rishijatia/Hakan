@@ -1,5 +1,6 @@
 ---
 name: haircut-log
+version: 0.1.0
 description: "Log haircuts with before/after photos, dates, barber, style notes. Track haircut history over time."
 triggers:
   - haircut

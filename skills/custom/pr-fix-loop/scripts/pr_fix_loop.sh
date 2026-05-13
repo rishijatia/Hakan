@@ -17,6 +17,7 @@ PROMPT_FILE="/tmp/pr_prompt_${PR}.txt"
 
 export PATH="/opt/data/bin:/usr/local/bin:/usr/bin:/bin"
 export HOME=/opt/data/home
+# shellcheck source=/dev/null
 [ -f ~/.bashrc ] && source ~/.bashrc 2>/dev/null
 # Ensure git can use GH_TOKEN for push
 if [ -n "${GH_TOKEN:-}" ]; then
