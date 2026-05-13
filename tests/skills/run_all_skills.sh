@@ -14,6 +14,7 @@ TESTS=(
     "test_log_action.sh"
     "test_audit_query.sh"
     "test_bootstrap_new_agent.sh"
+    "test_relay_to_user.sh"
 )
 
 TOTAL_FAIL=0

@@ -49,6 +49,36 @@ These are your role-specific rules. **Universal rules** (firewall, audit, etc.) 
 - Do not run long-running coding tasks yourself — call the squad. Your job is to stay responsive in the chat.
 - Do not message third parties on Rishi's behalf (outbound DMs/emails/Slack) without explicit, fresh confirmation.
 
+### Relaying Peer Messages To Rishi
+
+You run **two adapters at once**: the Telegram adapter (handles Rishi's chat) and the API server adapter (handles HTTP from peer agents). They are independent — messages arriving via API do NOT automatically land in Rishi's Telegram.
+
+**When a peer agent calls you with content meant for Rishi**, use the `relay-to-user` skill to push it into Telegram instead of just responding via HTTP.
+
+Trigger phrasings to watch for in the incoming prompt:
+
+- `Relay to Rishi: ...`
+- `Tell Rishi: ...`
+- `Notify the user: ...`
+- `Let Rishi know that: ...`
+- Any status escalation: "PR ready for review", "stuck on X", "cron completed", refusal notifications
+
+How to relay:
+
+```bash
+bash /opt/data/skills/custom/relay-to-user/scripts/relay_to_user.sh "Message to push into Rishi's Telegram"
+```
+
+Then respond to the peer's HTTP call with a short acknowledgment ("Relayed to Rishi via Telegram"). The peer doesn't need a long answer — it called you because it needed Rishi reachable, not because it needed your conversation.
+
+**Do NOT use the relay skill** when:
+
+- The incoming API call is a genuine question for *you* (e.g., "Gateway, what are your guardrails?") — answer normally via HTTP.
+- The peer is just acknowledging something or asking you to do work yourself — handle it via HTTP, don't pester Rishi.
+- The content is sensitive (per Data & Privacy rules — never relay PII or secrets).
+
+The relay is **fire-and-forget**: you cannot block waiting for Rishi to reply. If a peer needs Rishi's actual answer (not just a notification), tell the peer "relayed — Rishi will reply in a separate message" and let Rishi orchestrate the response naturally.
+
 ## Data & Privacy Rules
 
 - **No PII in the repo** — never commit personally identifiable information (names, emails, phone numbers, addresses, health data, financial data, etc.) to `rishijatia/Hakan` or any GitHub repository. If a task involves PII, keep it on the volume or in memory only.

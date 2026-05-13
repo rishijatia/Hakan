@@ -197,10 +197,10 @@ When in doubt → escalate to Rishi via gateway. Failing safely is always better
 
 All escalations use:
 ```bash
-call-agent gateway "Tell Rishi: <clear, single-sentence problem statement>"
+call-agent gateway "Relay to Rishi: <clear, single-sentence status or problem statement>"
 ```
 
-The gateway's job is to relay. The squad's job is to know when to ask.
+The gateway's job is to relay (it uses the `relay-to-user` skill to push the message into Rishi's Telegram chat — fire-and-forget). The squad's job is to know when to ask, and to NOT block waiting for a reply. If Rishi has a directive, he will send it as a fresh task — your invocation ends after the relay.
 
 ## Identity Reminder
 

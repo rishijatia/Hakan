@@ -19,6 +19,7 @@ TESTS=(
     "test_audit_log.sh"
     "test_tech_lead_refusal.sh"
     "test_agent_refusal.sh"
+    "test_relay_to_user.sh"
 )
 
 PASS=0
