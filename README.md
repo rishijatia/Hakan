@@ -52,13 +52,17 @@ Hakan/
 │   │   └── ... (others)       Personal skills: WHOOP, strength tracker, etc.
 │   └── overrides/        (placeholder for modified built-in skills)
 │
-├── tests/
-│   ├── lint/             Layer 1: shellcheck + YAML + SKILL.md frontmatter
-│   ├── smoke/            Layer 3: live tests against deployed Fly apps
+├── tests/                Three-layer test suite (see Testing section below)
+│   ├── lint/             Layer 1: static — shellcheck + YAML + SKILL.md frontmatter
+│   ├── skills/           Layer 2: unit — skill scripts in isolation, no infra needed
+│   ├── smoke/            Layer 3: live — tests against deployed Fly apps
 │   └── setup_deps.sh     One-time local setup (shellcheck, PyYAML, git hooks)
 │
 ├── .githooks/
 │   └── pre-commit        Runs lint suite on staged files
+│
+├── .github/workflows/
+│   └── ci.yml            Runs Layer 1 + Layer 2 on every PR + push to main
 │
 ├── scripts/              Misc helper scripts (cron jobs, deploy helpers)
 └── config/               Reserved for future shared config
@@ -101,6 +105,28 @@ bash tests/smoke/run_all_smoke.sh
 
 5 tests, ~100s, hits real LLMs. Checks SOUL.md sync, skill sync, bidirectional peer-to-peer auth, audit log roundtrip, and tech-lead refusal of out-of-scope work.
 
+## Testing
+
+Three layers, each with a different scope and cost:
+
+| Layer | Scope | Cost | When it runs |
+|-------|-------|------|--------------|
+| **1 — Static lint** | `shellcheck` on all `*.sh`, YAML parse on all `*.yaml`, SKILL.md frontmatter validator | <1s, free | Pre-commit hook + CI |
+| **2 — Skill unit tests** | 24 assertions across `call_agent`, `log_action`, `audit_query` — fixture-driven, no infra | ~1s, free | Locally + CI |
+| **3 — Smoke tests** | 5 end-to-end checks against the live Fly apps — health, peer-to-peer, audit roundtrip, guardrail refusal | ~100s, ~$0.02 | Manual after deploy |
+
+**Commands:**
+
+```bash
+bash tests/lint/run_all.sh           # Layer 1
+bash tests/skills/run_all_skills.sh  # Layer 2
+bash tests/smoke/run_all_smoke.sh    # Layer 3 (needs flyctl auth)
+```
+
+**CI (`.github/workflows/ci.yml`)** runs Layer 1 + Layer 2 on every PR and every push to main. Layer 3 is intentionally not in CI — it requires `flyctl` auth and costs real LLM credits.
+
+**Test discipline for the squad:** every PR the coding squad opens must add or update tests for the change. The full lint + skill test suite must pass locally before push, and CI must be green before merge. Guardrails 8 and 9 in `tech-lead/SKILL.md` make this a refusable rule.
+
 ### Check logs
 
 ```bash
@@ -125,10 +151,11 @@ Useful when you've pushed a new SOUL.md or skill to the repo and want it picked 
 
 ## Adding a Skill
 
-1. Create `skills/custom/<name>/SKILL.md` with required frontmatter (`name`, `description`, `version`).
+1. Create `skills/custom/<name>/SKILL.md` with required frontmatter (`name` matching the directory, `description`, `version`).
 2. Add scripts under `skills/custom/<name>/scripts/` (auto-`chmod +x` happens on boot).
-3. Commit. The pre-commit hook validates frontmatter and shellchecks scripts.
-4. `git push`. On next restart/deploy, both apps pull the new skill from GitHub.
+3. Add a Layer 2 unit test under `tests/skills/test_<name>.sh` if the skill has scripts with non-trivial logic.
+4. Commit. The pre-commit hook validates frontmatter and shellchecks scripts.
+5. `git push`. CI runs lint + skill tests on the PR. On merge + restart/deploy, both apps pull the new skill from GitHub.
 
 For skills that should run on **only one app**, gate their use in that app's SOUL.md.
 
@@ -160,7 +187,9 @@ See `flyio/SOUL.md` and `skills/custom/tech-lead/SKILL.md` for the full rules ea
 
 ## Status
 
-Foundation is live and tested. Active work focuses on extending the squad with specialized skills (designer for UI work, reviewer enhancements) and adding additional agents for non-coding domains (research, health, household coordination).
+Foundation is live and tested. CI is green. The squad has been validated end-to-end (Telegram → Gateway → Squad → response) including guardrail refusal of out-of-scope work.
+
+Active work focuses on extending the squad with specialized skills (designer for UI work, reviewer enhancements) and adding additional agents for non-coding domains (research, health, household coordination).
 
 ---
 
