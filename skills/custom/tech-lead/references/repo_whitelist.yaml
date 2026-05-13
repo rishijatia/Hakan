@@ -1,0 +1,20 @@
+# Repo whitelist for tech-lead skill.
+# The Coding Squad refuses any task targeting a repo not on this list.
+# Update via PR — never edit directly on a volume.
+
+allowed_repos:
+  - rishijatia/Hakan              # Hermes config + skills
+  - rishijatia/kaleidoscope-web   # Phaser 3 puzzle game
+  - rishijatia/fantasy-pl-mcp     # FPL MCP server
+  - rishijatia/marcellus          # Personal OpenClaw assistant
+
+# Explicit denylist for clarity — these MUST NEVER be touched.
+# Microsoft work, work-adjacent code, anything containing employer IP.
+denied_patterns:
+  - "microsoft/*"
+  - "Azure/*"
+  - "MicrosoftDocs/*"
+  - "*-microsoft-*"
+  - "*-azure-*"
+  - "*/work-*"
+  - "*/internal-*"
