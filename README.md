@@ -1,5 +1,7 @@
 # Hakan
 
+[![CI](https://github.com/rishijatia/Hakan/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rishijatia/Hakan/actions/workflows/ci.yml)
+
 Rishi Jatia's personal multi-agent AI system, running 24/7 on Fly.io.
 
 Hakan is built on [Hermes Agent](https://github.com/NousResearch/hermes-agent) and runs two long-lived agents that talk to each other over Fly's private network. The repo is the **source of truth**: SOUL.md identities and `skills/custom/` are synced from GitHub on every machine boot, so any change here flows to production by deploying or restarting.
