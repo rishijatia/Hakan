@@ -43,7 +43,7 @@ FILTER='.'
 if [ "$RAW" = true ]; then
     jq -c "$FILTER" "$LOG_FILE" | tail -n "$LIMIT"
 else
-    jq -r "$FILTER | [.ts, .agent, .action, .description, (.outcome // \"\")] | @tsv" "$LOG_FILE" \
+    jq -r "$FILTER | [.ts, .agent, .action, (.outcome // \"-\"), .description] | @tsv" "$LOG_FILE" \
         | tail -n "$LIMIT" \
-        | column -t -s $'\t'
+        | awk -F'\t' '{ printf "%-21s  %-22s  %-14s  %-8s  %s\n", $1, $2, $3, $4, $5 }'
 fi
