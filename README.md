@@ -167,18 +167,16 @@ For skills that should run on **only one app**, gate their use in that app's SOU
 
 ## Adding an Agent (third Hermes app)
 
-1. Create a new `flyio-<role>/` directory with `fly.toml`, `Dockerfile`, `start.sh`, `SOUL.md` (copy from `flyio-squad/`).
-2. Add the new agent to `skills/custom/call-agent/references/agents.yaml`.
-3. Create the Fly app + volume:
+The full end-to-end runbook lives at **[`docs/adding-a-new-agent.md`](docs/adding-a-new-agent.md)**.
 
-   ```bash
-   fly apps create hermes-<role>
-   fly volumes create <role>_data -a hermes-<role> --region fra --size 3 --yes
-   fly secrets set OPENROUTER_API_KEY=... GITHUB_PAT=... API_SERVER_KEY=$(openssl rand -hex 32) -a hermes-<role>
-   ```
+Fast path: run the bootstrap script, which scaffolds local files, updates the registry, adds a stub to `shared/peer_rules.md`, generates a smoke test, and prints the manual Fly commands:
 
-4. Set the cross-app bearer tokens on both peer apps so they can call each other.
-5. Deploy and add a smoke test for it.
+```bash
+bash scripts/bootstrap_new_agent.sh research "Research Agent" \
+    "Deep research on technical topics. Produces written briefs, never code."
+```
+
+Then follow the printed Fly.io commands (create app + volume + secrets), flesh out the generated SOUL.md and `peer_rules.md` entry, commit, deploy, and run `bash tests/smoke/run_all_smoke.sh` to verify.
 
 ## Security & Guardrails
 

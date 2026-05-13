@@ -1,0 +1,24 @@
+app = 'hermes-{{AGENT_NAME}}'
+primary_region = 'fra'
+
+[build]
+  dockerfile = "Dockerfile"
+
+[processes]
+  app = "gateway run"
+
+# API server config — Hermes exposes OpenAI-compatible chat completions
+# at hermes-{{AGENT_NAME}}.internal:8642 for other Fly apps in this org.
+# Not exposed publicly (no [[services]] block).
+[env]
+  API_SERVER_ENABLED = "true"
+  API_SERVER_HOST = "fly-local-6pn"
+  API_SERVER_PORT = "8642"
+
+[[mounts]]
+  source = "{{AGENT_NAME_UNDERSCORE}}_data"
+  destination = "/opt/data"
+
+[[vm]]
+  memory = "1gb"
+  cpus = 1
