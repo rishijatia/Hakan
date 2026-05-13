@@ -34,8 +34,21 @@ fi
 if [ -n "$PROXY_HOST" ] && [ -n "$PROXY_PORT" ]; then
     cat > /etc/proxychains4.conf << EOF
 strict_chain
-proxy_dns
 quiet_mode
+
+# Bypass the SOCKS proxy for local and Fly private network traffic.
+# - 127.0.0.0/8: localhost (so the API server can talk to itself)
+# - fdaa::/16: Fly 6PN — every Fly app's .internal hostname lives here, and
+#   peer-to-peer calls (gateway ↔ coding-squad) must connect directly.
+# proxy_dns is intentionally NOT set: with it on, proxychains intercepts
+# getaddrinfo() for ALL hostnames (including fly-local-6pn) and returns
+# fake 224.x.x.x addresses, breaking both the API server bind and any
+# attempt to resolve .internal. Without proxy_dns, the local resolver
+# handles names normally and the localnet rules above apply at connect time.
+
+localnet 127.0.0.0/255.0.0.0
+localnet fdaa::/16
+
 [ProxyList]
 socks5 $PROXY_HOST $PROXY_PORT $PROXY_USER $PROXY_PASS
 EOF
