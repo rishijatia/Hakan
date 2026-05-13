@@ -78,6 +78,15 @@ RESPONSE=$(curl -sS -X POST "$AGENT_URL/v1/chat/completions" \
     --max-time 600 \
     -d "$PAYLOAD")
 
+# Auto-audit every peer call (truncate prompt to keep entries small).
+PROMPT_PREVIEW="${PROMPT:0:120}"
+[ ${#PROMPT} -gt 120 ] && PROMPT_PREVIEW="${PROMPT_PREVIEW}..."
+AUDIT_OUTCOME="success"
+echo "$RESPONSE" | jq -e '.error' >/dev/null 2>&1 && AUDIT_OUTCOME="failure"
+AUDIT_SCRIPT="$(dirname "$(dirname "$SCRIPT_DIR")")/audit-log/scripts/log_action.sh"
+[ -x "$AUDIT_SCRIPT" ] && bash "$AUDIT_SCRIPT" peer-call \
+    "Called $AGENT_NAME: $PROMPT_PREVIEW" "$AUDIT_OUTCOME" 2>/dev/null || true
+
 if [ "$RETURN_JSON" = true ]; then
     echo "$RESPONSE"
 else
