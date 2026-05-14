@@ -1,7 +1,7 @@
 ---
 name: call-agent
 description: "Peer-to-peer call to another Hermes agent over Fly's private network. Use to delegate work to a specialized agent (e.g., squad for coding) or to relay to the user via the gateway. Same skill installed on every agent."
-version: 0.1.0
+version: 0.2.0
 author: Hakan
 metadata:
   hermes:
@@ -64,6 +64,39 @@ Each remote call loads ~16K prompt tokens (the called agent's full Hermes contex
 ## Forward-Compatibility
 
 The registry format (`name`, `url`, `description`, `api_key_env`) maps cleanly to A2A Agent Cards. When Hermes ships A2A support (issue #514), the migration is to swap `agents.yaml` for `/.well-known/agent.json` discovery and use the A2A SDK in place of curl.
+
+## Async Dispatch Patterns
+
+### Retry After Infra Fix
+
+When an async task fails due to infrastructure (PAT permissions, redeploy, network blip) and the user confirms a fix + redeploy:
+
+1. Wait 10-15 seconds for the target machine to come back up (it may still be deploying).
+2. Fire a fresh `--async` call with a short, focused prompt — just the remaining steps, not the full original task.
+3. If the connection fails (exit code 7), the machine is still restarting — wait and retry once more.
+
+```bash
+# Example: retry just the push step after PAT fix
+sleep 10 && bash call_agent.sh --async squad "PAT updated. Retry: push the branch and open the PR. Relay back the URL."
+```
+
+### Status Check for Async Tasks
+
+When the user asks "what's the status?" of a running async task:
+
+1. **Audit-log grep first** — fastest signal, no network hop:
+   ```bash
+   grep "<task_id>" /opt/data/logs/audit.log | tail -5
+   ```
+2. **Check GitHub directly** if the gateway has `gh` auth (it usually doesn't — that's the squad's domain).
+3. **Ping the squad** with a fresh `--async` status check — this is the definitive answer.
+4. **Report to user** with what you know: last relay received, any new audit entries, and that you've pinged for a fresh update.
+
+**Pitfall:** Don't just say "checking..." and wait. Give the user the last known state immediately, THEN ping.
+
+### Gateway `gh` Auth
+
+The gateway typically does NOT have `gh` authenticated — GitHub operations are the squad's domain. Don't try to `gh pr list` from the gateway; it will fail. Instead, ask the squad or check the audit log for relayed status.
 
 ## Failure Modes
 

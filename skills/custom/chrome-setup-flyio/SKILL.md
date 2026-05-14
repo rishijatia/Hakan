@@ -1,6 +1,5 @@
 ---
 name: chrome-setup-flyio
-version: 0.1.0
 description: >
   Install and configure Chrome for headless browser automation on Fly.io.
   Fixes "Chrome not found" errors from agent-browser. Covers npm global install,
