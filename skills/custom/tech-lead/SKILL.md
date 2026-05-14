@@ -1,7 +1,7 @@
 ---
 name: tech-lead
 description: "Orchestrate a coding task end-to-end on the Coding Squad: validate scope, plan, dispatch implementer + reviewer subagents, open a PR, handle review feedback, and escalate to the user via Telegram on failure. Enforces all guardrails (repo whitelist, Microsoft firewall, scope ceiling, no merge)."
-version: 0.1.0
+version: 0.2.0
 author: Hakan
 metadata:
   hermes:
@@ -191,8 +191,26 @@ When in doubt → escalate to Rishi via gateway. Failing safely is always better
 |---------|--------|
 | Tests fail after 2 implementer iterations | Escalate via gateway, draft PR with question |
 | Design ambiguity (multiple valid approaches) | Escalate before coding, ask Rishi to choose |
-| Out-of-scope repo / Microsoft mention | Refuse, audit-log, escalate with reason |
 | Hit the 250-LOC ceiling mid-task | Pause, push what's done as draft PR, escalate |
+| LLM error / network blip | Retry once. Second failure → escalate |
+| `git push` rejected — PAT lacks permission | Escalate immediately via gateway relay: "Cannot push — PAT needs Contents: Read and write. Update at github.com/settings/personal-access-tokens and redeploy." Do NOT retry until redeploy confirmed. |
+
+## Pre-Flight: Push & PR Permission Check
+
+Before starting any task that involves pushing a branch or opening a PR, verify the PAT has write access:
+
+```bash
+# Quick check — if this 403s, the PAT lacks write permission
+gh api repos/rishijatia/Hakan --jq '.permissions.push' 2>&1
+```
+
+If the check fails (403 or `false`), **stop immediately** and escalate via gateway:
+
+```bash
+call-agent --relay gateway "Cannot proceed — GITHUB_PAT lacks Contents: Read and write for rishijatia/Hakan. Rishi needs to update the fine-grained PAT at github.com/settings/personal-access-tokens and redeploy with 'fly secrets set GITHUB_PAT=... -a hermes-coding-squad'."
+```
+
+**Pitfall:** Don't do all the work (clone, edit, lint, test) and THEN discover you can't push. Check permissions first — it saves the user 5+ minutes of waiting for doomed work.
 | LLM error / network blip | Retry once. Second failure → escalate |
 
 All escalations use:
